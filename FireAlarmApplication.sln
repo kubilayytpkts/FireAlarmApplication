@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35208.52
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FireAlarmApplication.src", "FireAlarmApplication.src", "{09613624-5470-47BC-8959-97801A4A9EB9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{2C4C3483-1EDB-4B5D-AA66-C59B1C1E87EE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FireAlarmApplication.Shared.Contracts", "FireAlarmApplication.Shared.Contracts\FireAlarmApplication.Shared.Contracts.csproj", "{34406149-F435-4206-AFBA-251B80C9F4B3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FireAlarmApplication.SolutionItems", "FireAlarmApplication.SolutionItems", "{3E162AD6-C412-473F-B07D-38B91B9CDFEC}"
+	ProjectSection(SolutionItems) = preProject
+		docker-compose.yml = docker-compose.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{3A8E99B4-0404-44F9-9FEA-A8631E7119E6}"
+	ProjectSection(SolutionItems) = preProject
+		init-databases.txt = init-databases.txt
+		init-multiple-databases.sh = init-multiple-databases.sh
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FireAlarmApplication.Web", "FireAlarmApplication.Web\FireAlarmApplication.Web.csproj", "{24783C18-6E18-4A95-BD4F-8865EED0533E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{34406149-F435-4206-AFBA-251B80C9F4B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34406149-F435-4206-AFBA-251B80C9F4B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34406149-F435-4206-AFBA-251B80C9F4B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34406149-F435-4206-AFBA-251B80C9F4B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24783C18-6E18-4A95-BD4F-8865EED0533E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24783C18-6E18-4A95-BD4F-8865EED0533E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24783C18-6E18-4A95-BD4F-8865EED0533E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24783C18-6E18-4A95-BD4F-8865EED0533E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2C4C3483-1EDB-4B5D-AA66-C59B1C1E87EE} = {09613624-5470-47BC-8959-97801A4A9EB9}
+		{34406149-F435-4206-AFBA-251B80C9F4B3} = {2C4C3483-1EDB-4B5D-AA66-C59B1C1E87EE}
+		{3A8E99B4-0404-44F9-9FEA-A8631E7119E6} = {3E162AD6-C412-473F-B07D-38B91B9CDFEC}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {45D043D2-2F1D-4F9E-889A-70D1E34E0626}
+	EndGlobalSection
+EndGlobal

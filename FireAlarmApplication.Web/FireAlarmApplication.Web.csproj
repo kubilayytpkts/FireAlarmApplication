@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="MediatR" Version="12.2.0" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.0" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite" Version="7.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.0" />
+
+		<!-- Redis -->
+		<PackageReference Include="StackExchange.Redis" Version="2.7.10" />
+
+		<!-- RabbitMQ -->
+		<PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+
+		<!-- Background jobs -->
+		<PackageReference Include="Hangfire.Core" Version="1.8.6" />
+		<PackageReference Include="Hangfire.PostgreSql" Version="1.20.6" />
+		<PackageReference Include="Hangfire.AspNetCore" Version="1.8.6" />
+
+		<!-- UI Components -->
+		<PackageReference Include="MudBlazor" Version="6.11.2" />
+
+		<!-- HTTP Client -->
+		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+
+		<!-- JSON -->
+		<PackageReference Include="System.Text.Json" Version="7.0.0" />
+	</ItemGroup>
+
+	<!-- Project References -->
+	<!--<ItemGroup>
+		<ProjectReference Include="..\FireGuard.Shared.Contracts\FireGuard.Shared.Contracts.csproj" />
+	</ItemGroup>-->
+	<ItemGroup>
+	  <Folder Include="Modules\AlertSystem\" />
+	  <Folder Include="Modules\Notification\" />
+	  <Folder Include="Modules\Reporting\" />
+	  <Folder Include="Modules\UserManagement\" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\FireAlarmApplication.Shared.Contracts\FireAlarmApplication.Shared.Contracts.csproj" />
+	</ItemGroup>
+
+</Project>

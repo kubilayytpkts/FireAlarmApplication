@@ -1,0 +1,36 @@
+-- FireGuard Microservices Database Initialization
+-- Her service için ayrý database oluþturulur
+-- Fire Detection Service Database
+CREATE DATABASE "FireDetectionDB" 
+    WITH OWNER 'fireguard'
+    ENCODING 'UTF8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
+    TEMPLATE template0;
+-- Alert Service Database  
+CREATE DATABASE "AlertDB"
+    WITH OWNER 'fireguard'
+    ENCODING 'UTF8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
+    TEMPLATE template0;
+-- User Management Service Database
+CREATE DATABASE "UserDB"
+    WITH OWNER 'fireguard'
+    ENCODING 'UTF8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
+    TEMPLATE template0;
+-- Notification Service Database (logs için)
+CREATE DATABASE "NotificationDB"
+    WITH OWNER 'fireguard'
+    ENCODING 'UTF8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
+    TEMPLATE template0;
+-- PostGIS extension'ý Fire Detection DB'ye ekle
+\c "FireDetectionDB";
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
+-- Confirmation message
+\echo 'FireGuard databases created successfully!';
