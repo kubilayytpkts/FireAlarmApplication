@@ -1,7 +1,9 @@
-﻿using FireAlarmApplication.Web.Shared.Common;
+﻿using FireAlarmApplication.Web.Modules.FireDetection.Services;
+using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
+using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.EntityFrameworkCore;
 
-namespace FireAlarmApplication.Web.Modules.FireDetection;
+namespace FireAlarmApplication.Web.Modules.FireDetection.Modules;
 
 /// <summary>
 /// Fire Detection Module - Yangın tespit ve risk analizi
@@ -27,18 +29,20 @@ public class FireDetectionModule : IFireGuardModule
             });
 
             // Development'ta detailed logging
-            if (configuration.GetValue<bool>("Logging:LogLevel:FireGuard") is true)
-            {
-                options.EnableSensitiveDataLogging();
-                options.EnableDetailedErrors();
-            }
+            //if (configuration.GetValue<bool>("Logging:LogLevel:FireGuard") is true)
+            //{
+            //    options.EnableSensitiveDataLogging();
+            //    options.EnableDetailedErrors();ad
+            //}
         });
 
-        services.AddScoped<Services.IFireDetectionService, Services.FireDetectionService>();
-        services.AddScoped<Services.INasaFirmsService, Services.NasaFirmsService>();
-        services.AddScoped<Services.IRiskCalculationService, Services.RiskCalculationService>();
+        services.AddScoped<IFireDetectionService, FireDetectionService>();
+        services.AddScoped<INasaFirmsService, NasaFirmsService>();
+        services.AddScoped<IFireDataSyncService, FireDataSyncService>();
+        services.AddScoped<IBackGroundJobService, BackGroundJobService>();
+        //services.AddScoped<Services.IRiskCalculationService, Services.RiskCalculationService>();
 
-        services.AddHttpClient<Services.Interfaces.INasaFirmsService>(client =>
+        services.AddHttpClient<INasaFirmsService>(client =>
         {
             var baseUrl = configuration["FireGuard:NasaFirms:BaseUrl"] ?? "https://firms.modaps.eosdis.nasa.gov/";
             client.BaseAddress = new Uri(baseUrl);
@@ -69,6 +73,11 @@ public class FireDetectionModule : IFireGuardModule
                 .WithName("GetFireStats")
                 .WithSummary("Get fire statistics")
                 .Produces<Models.FireStatsDto>();
+
+        fireGroup.MapGet("/sync", TriggerManualSyncAsync)
+            .WithName("TriggerManualSync")
+            .WithSummary("Trigger manual NASA FIRMS data sync")
+            .Produces<object>(StatusCodes.Status200OK);
     }
 
     public async Task SeedDataAsync(IServiceProvider serviceProvider)
@@ -96,7 +105,7 @@ public class FireDetectionModule : IFireGuardModule
     }
 
     // 🔌 API Endpoint Handlers
-    private static async Task<IResult> GetActiveFiresAsync(Services.Interfaces.IFireDetectionService fireService)
+    private static async Task<IResult> GetActiveFiresAsync(IFireDetectionService fireService)
     {
         var fires = await fireService.GetActiveFiresAsync();
         return Results.Ok(fires);
@@ -104,7 +113,7 @@ public class FireDetectionModule : IFireGuardModule
 
     private static async Task<IResult> GetNearbyFiresAsync(
         double lat, double lng,
-        Services.Interfaces.IFireDetectionService fireService,
+        IFireDetectionService fireService,
         double radiusKm = 50)
     {
         var fires = await fireService.GetFiresNearLocationAsync(lat, lng, radiusKm);
@@ -112,7 +121,7 @@ public class FireDetectionModule : IFireGuardModule
     }
 
     private static async Task<IResult> GetFireStatsAsync(
-        Services.Interfaces.IFireDetectionService fireService)
+        IFireDetectionService fireService)
     {
         var stats = await fireService.GetFireStatsAsync();
         return Results.Ok(stats);
@@ -140,5 +149,26 @@ public class FireDetectionModule : IFireGuardModule
         await context.SaveChangesAsync();
 
         logger.LogInformation("🌱 Test fire data seeded: {FireId} near Ankara", testFire.Id);
+    }
+
+    private static async Task<IResult> TriggerManualSyncAsync(IBackGroundJobService backGroundJobService)
+    {
+        try
+        {
+            var jobId = backGroundJobService.TriggerManualSyncAsync();
+
+            return Results.Ok(new
+            {
+                Success = true,
+                Message = "Manual sync triggered successfully",
+                JobId = jobId,
+                Timestamp = DateTime.UtcNow
+            });
+
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Error triggering sync: {ex.Message}");
+        }
     }
 }

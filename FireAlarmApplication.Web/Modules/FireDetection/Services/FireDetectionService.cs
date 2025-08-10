@@ -23,6 +23,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _mediator = mediator;
             _logger = logger;
         }
+
         /// <summary>
         /// Aktif yangınları getir (cache'li)
         /// </summary>
@@ -59,6 +60,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 throw;
             }
         }
+
         /// <summary>
         /// Belirli konum yakınındaki yangınları getir (spatial query)
         /// </summary>
@@ -87,6 +89,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 throw;
             }
         }
+
         public async Task<FireStatsDto> GetFireStatsAsync()
         {
             const string cacheKey = "fire_stats_turkey";

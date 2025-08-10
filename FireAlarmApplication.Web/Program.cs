@@ -1,5 +1,8 @@
+﻿using FireAlarmApplication.Web.Modules.FireDetection.Modules;
 using FireAlarmApplication.Web.Shared.Common;
 using FireAlarmApplication.Web.Shared.Infrastructure;
+using Hangfire;
+using Hangfire.PostgreSql;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +41,30 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 
 builder.Services.AddScoped<IRedisService, RedisService>();
 
+// 🕐 Hangfire Configuration (.NET 7 uyumlu)
+builder.Services.AddHangfire(configuration =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+    configuration
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UsePostgreSqlStorage(connectionString, new PostgreSqlStorageOptions
+        {
+            QueuePollInterval = TimeSpan.FromSeconds(1), // kısa tutabilirsin test için
+            PrepareSchemaIfNecessary = true,
+            SchemaName = "hangfire"
+        });
+});
+
+// Hangfire Server
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = 5;
+    options.Queues = new[] { "default", "fire-sync" };
+});
+
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -46,7 +73,7 @@ builder.Services.AddLogging(logging =>
 
 var modules = new List<IFireGuardModule>
 {
-    // new FireDetectionModule(),
+    new FireDetectionModule(),
     // new UserManagementModule(),
     // new AlertSystemModule()
 };
@@ -67,6 +94,7 @@ app.UseRouting();
 app.MapFireGuardModules();
 app.MapRazorPages();
 app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
 
 if (app.Environment.IsDevelopment())
 {
@@ -95,6 +123,5 @@ if (!app.Environment.IsDevelopment())
 
 
 
-app.MapFallbackToPage("/_Host");
 
 app.Run();
