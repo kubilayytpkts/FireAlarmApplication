@@ -36,7 +36,6 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var cachedFires = await _redis.GetAsync<List<FireDto>>(cachekey);
                 if (cachedFires != null)
                 {
-                    _logger.LogDebug($"✅ Active fires loaded from cache: {cachedFires.Count} fires");
                     return cachedFires;
                 }
 
@@ -50,7 +49,6 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 await _redis.SetAsync(cachekey, fires, TimeSpan.FromMinutes(5));
 
-                _logger.LogInformation($"🔥 Active fires loaded from database: {fires.Count} fires");
                 return fires;
             }
             catch (Exception ex)

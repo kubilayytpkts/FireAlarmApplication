@@ -94,13 +94,18 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             try
             {
                 var point = new Point(longitude, latitude) { SRID = 4326 };
-                var proximityMeters = 1000; // 1km tolerance
+                var proximityMeters = 100; // 1km tolerance
                 var timeToleranceHours = 6; // 6 saat tolerance
+
+                var startTime = detectedAt.AddHours(-timeToleranceHours);
+                var endTime = detectedAt.AddHours(timeToleranceHours);
+
+                var satelliteBase = satellite.Split('-')[0]; // "N-VIIRS" → "N"
 
                 var existingFire = await _fireDetectionDbContext.FireDetections
                     .Where(f => f.Location.IsWithinDistance(point, proximityMeters))
                     .Where(f => f.Satellite == satellite)
-                //.Where(f => Math.Abs(EF.Functions.DateDiffHour(f.DetectedAt, detectedAt)) <= timeToleranceHours)
+                    .Where(f => f.DetectedAt >= startTime && f.DetectedAt <= endTime)
                     .AnyAsync();
 
                 return existingFire;

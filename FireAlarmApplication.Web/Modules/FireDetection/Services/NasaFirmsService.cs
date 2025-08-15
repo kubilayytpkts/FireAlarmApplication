@@ -23,10 +23,11 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         /// <summary>
         /// NASA FIRMS'den aktif yangınları çek (Turkey bounds)
         /// </summary>
-        public async Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36,26,42,45", int dayRange = 1)
+        public async Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36.2,26.0,42.0,43.2", int dayRange = 1)
         {
             try
             {
+
                 var apiKey = _fireGuardOptions.NasaFirms.ApiKey;
                 if (string.IsNullOrEmpty(apiKey))
                 {
@@ -36,18 +37,15 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 var endPoint = $"api/area/csv/{apiKey}/VIIRS_SNPP_NRT/{area}/{dayRange}";
 
-                _logger.LogDebug("🌍 Fetching fires from NASA FIRMS: {Endpoint}", endPoint);
-
                 var response = await _httpClient.GetAsync(endPoint);
+                var responseContent = await response.Content.ReadAsStringAsync();
 
                 if (response == null)
                 {
-                    _logger.LogWarning("⚠️ Empty response from NASA FIRMS API");
                     return new List<Models.FireDetection>();
                 }
 
-                var fires = ParseCvsResponse(response.Content.ToString());
-                _logger.LogInformation("🔥 Fetched {Count} fires from NASA FIRMS", fires.Count);
+                var fires = ParseCvsResponse(responseContent);
 
                 return fires;
             }
@@ -122,7 +120,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     try
                     {
                         var fire = ParseCsvLine(lines[i]);
-                        if (fire != null)
+                        if (fire != null && IsNearTurkishCity(fire.Latitude, fire.Longitude))
                         {
                             fires.Add(fire);
                         }
@@ -149,7 +147,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             var parts = csvLine.Split(',');
 
-            if (parts.Length < 13)
+            if (parts.Length < 14)
             {
                 return null;
             }
@@ -171,8 +169,26 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 // Parse other fields
                 double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var brightness);
-                double.TryParse(parts[8], NumberStyles.Float, CultureInfo.InvariantCulture, out var confidence);
-                double.TryParse(parts[11], NumberStyles.Float, CultureInfo.InvariantCulture, out var frp);
+
+                double confidence = 0;
+                var confidenceStr = parts[9]; // confidence column
+                if (confidenceStr == "n" || confidenceStr == "nominal")
+                {
+                    confidence = 50; // Default nominal confidence
+                }
+                else if (confidenceStr == "l" || confidenceStr == "low")
+                {
+                    confidence = 30; // Low confidence
+                }
+                else if (confidenceStr == "h" || confidenceStr == "high")
+                {
+                    confidence = 80; // High confidence
+                }
+                else
+                {
+                    double.TryParse(confidenceStr, NumberStyles.Float, CultureInfo.InvariantCulture, out confidence);
+                }
+                double.TryParse(parts[12], NumberStyles.Float, CultureInfo.InvariantCulture, out var frp); // Fire Radiative Power
 
                 // Parse date/time
                 var dateStr = parts[5]; // YYYY-MM-DD
@@ -185,6 +201,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 }
 
                 var satellite = parts[7] ?? "VIIRS";
+                var instrument = parts[8] ?? "VIIRS"; // instrument column
 
                 return new Models.FireDetection
                 {
@@ -194,8 +211,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     Confidence = confidence,
                     Brightness = brightness > 0 ? brightness : null,
                     FireRadiativePower = frp > 0 ? frp : null,
-                    Satellite = satellite,
-                    Status = confidence > 50 ? FireStatus.Verified : FireStatus.Detected,
+                    Satellite = $"{satellite}-{instrument}", // "N-VIIRS"
+                    Status = confidence > 40 ? FireStatus.Verified : FireStatus.Detected,
                     RiskScore = 0, // Will be calculated separately
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -206,6 +223,43 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 _logger.LogWarning(ex, "⚠️ Error parsing fire data from line: {Line}", csvLine);
                 return null;
             }
+        }
+
+        private bool IsNearTurkishCity(double lat, double lng)
+        {
+            var turkishCities = new (double lat, double lng, string name)[]
+            {
+                (41.0082, 28.9784, "İstanbul"), (39.9334, 32.8597, "Ankara"), (38.4192, 27.1287, "İzmir"),
+                (36.8969, 30.7133, "Antalya"), (37.0000, 35.3213, "Adana"), (37.8667, 32.4833, "Konya"),
+                (40.1885, 29.0610, "Bursa"), (41.2867, 36.3300, "Samsun"), (39.9000, 41.2700, "Erzurum"),
+                (38.4891, 43.4089, "Van"), (37.0662, 37.3833, "Gaziantep"), (36.4018, 36.3498, "Hatay"),
+                (38.7312, 35.4787, "Kayseri"), (41.0015, 39.7178, "Trabzon"), (36.8000, 34.6333, "Mersin"),
+                (37.1674, 38.7955, "Şanlıurfa"), (37.9144, 40.2306, "Diyarbakır")
+            };
+
+            const double maxDistanceKm = 150;
+
+            foreach (var city in turkishCities)
+            {
+                var latDiff = lat - city.lat;
+                var lngDiff = lng - city.lng;
+                var distance = Math.Sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111; // Rough km conversion
+
+                if (distance <= maxDistanceKm)
+                {
+                    return true;
+                }
+            }
+
+            // Safe Turkish interior regions
+            if ((lat >= 38.5 && lat <= 40.0 && lng >= 30.5 && lng <= 35.0) || // İç Anadolu
+                (lat >= 37.8 && lat <= 40.5 && lng >= 26.0 && lng <= 30.0) || // Batı Anadolu
+                (lat >= 40.8 && lat <= 42.0 && lng >= 27.0 && lng <= 40.0))   // Karadeniz
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -52,7 +52,7 @@ builder.Services.AddHangfire(configuration =>
         .UseRecommendedSerializerSettings()
         .UsePostgreSqlStorage(connectionString, new PostgreSqlStorageOptions
         {
-            QueuePollInterval = TimeSpan.FromSeconds(1), // kısa tutabilirsin test için
+            QueuePollInterval = TimeSpan.FromSeconds(15), // kısa tutabilirsin test için
             PrepareSchemaIfNecessary = true,
             SchemaName = "hangfire"
         });
@@ -61,7 +61,7 @@ builder.Services.AddHangfire(configuration =>
 // Hangfire Server
 builder.Services.AddHangfireServer(options =>
 {
-    options.WorkerCount = 5;
+    options.WorkerCount = 1;
     options.Queues = new[] { "default", "fire-sync" };
 });
 
@@ -82,7 +82,6 @@ builder.AddFireGuardModules(modules.ToArray());
 
 var app = builder.Build();
 
-// ??? Configure HTTP Pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -94,7 +93,10 @@ app.UseRouting();
 app.MapFireGuardModules();
 app.MapRazorPages();
 app.MapBlazorHub();
+app.UseHangfireServer();
 app.MapFallbackToPage("/_Host");
+app.UseHangfireDashboard("/hangfire");
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -110,18 +112,11 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-
-
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-
-
-
 
 
 app.Run();

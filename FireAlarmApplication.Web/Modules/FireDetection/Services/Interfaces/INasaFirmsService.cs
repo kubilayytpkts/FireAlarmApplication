@@ -7,7 +7,7 @@
     public interface INasaFirmsService
     {
         /// <summary>NASA FIRMS'den aktif yangınları çek</summary>
-        Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36,26,42,45", int dayRange = 1);
+        Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "35.8,25.7,42.1,44.8", int dayRange = 1);
 
         /// <summary>NASA FIRMS API health check</summary>
         Task<bool> IsApiHealthyAsync();

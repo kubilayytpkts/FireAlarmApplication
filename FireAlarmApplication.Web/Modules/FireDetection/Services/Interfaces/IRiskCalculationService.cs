@@ -1,4 +1,6 @@
-﻿namespace FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces
+﻿using FireAlarmApplication.Shared.Contracts.Models;
+
+namespace FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces
 {
     /// <summary>
     /// AI-based risk calculation service
@@ -14,5 +16,7 @@
 
         /// <summary>Location-based risk assessment</summary>
         Task<double> AssessLocationRiskAsync(double latitude, double longitude);
+        /// <summary>Detaylı risk analizi (faktörleri ile birlikte)</summary>
+        Task<RiskAssessmentResult> GetDetailedRiskAsync(Models.FireDetection fire);
     }
 }

@@ -46,9 +46,12 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
+                var delay = TimeSpan.FromMinutes(1);
 
-                var jobId = _backgroundJobClient.Enqueue<IFireDataSyncService>(
-               service => service.SyncFiresFromNasaAsync());
+
+                var jobId = _backgroundJobClient.Schedule<IFireDataSyncService>(
+                      service => service.SyncFiresFromNasaAsync(),
+                      delay);
 
                 _logger.LogInformation("🚀 Manual NASA sync job triggered: {JobId}", jobId);
                 return jobId;

@@ -27,13 +27,6 @@ public class FireDetectionModule : IFireGuardModule
                 // Command timeout for large spatial queries
                 npgsqlOptions.CommandTimeout(60);
             });
-
-            // Development'ta detailed logging
-            //if (configuration.GetValue<bool>("Logging:LogLevel:FireGuard") is true)
-            //{
-            //    options.EnableSensitiveDataLogging();
-            //    options.EnableDetailedErrors();ad
-            //}
         });
 
         services.AddScoped<IFireDetectionService, FireDetectionService>();
@@ -42,12 +35,14 @@ public class FireDetectionModule : IFireGuardModule
         services.AddScoped<IBackGroundJobService, BackGroundJobService>();
         //services.AddScoped<Services.IRiskCalculationService, Services.RiskCalculationService>();
 
-        services.AddHttpClient<INasaFirmsService>(client =>
+        services.AddHttpClient<INasaFirmsService, NasaFirmsService>(client =>
         {
-            var baseUrl = configuration["FireGuard:NasaFirms:BaseUrl"] ?? "https://firms.modaps.eosdis.nasa.gov/";
+            var baseUrl = configuration["FireGuard:NasaFirms:BaseUrl"]
+                          ?? "https://firms.modaps.eosdis.nasa.gov/";
             client.BaseAddress = new Uri(baseUrl);
             client.DefaultRequestHeaders.Add("User-Agent", "FireGuard-Turkey/1.0");
-            client.Timeout = TimeSpan.FromSeconds(30);
+            client.Timeout = TimeSpan.FromMinutes(5);
+
         });
     }
 
