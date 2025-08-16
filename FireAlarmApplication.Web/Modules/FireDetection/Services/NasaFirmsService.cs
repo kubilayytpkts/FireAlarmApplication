@@ -12,12 +12,23 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         private readonly HttpClient _httpClient;
         private readonly FireGuardOptions _fireGuardOptions;
         private readonly ILogger<NasaFirmsService> _logger;
+        private readonly IRiskCalculationService _riskCalculationService;
 
-        public NasaFirmsService(HttpClient httpClient, IOptions<FireGuardOptions> fireGuardOptions, ILogger<NasaFirmsService> logger)
+        List<(double lat, double lng)> turkeyPolygon = new()
+        {
+            (36.0, 26.0),
+            (36.0, 45.0),
+            (42.1, 45.0),
+            (42.1, 26.0)
+        };
+
+
+        public NasaFirmsService(HttpClient httpClient, IOptions<FireGuardOptions> fireGuardOptions, ILogger<NasaFirmsService> logger, IRiskCalculationService riskCalculationService)
         {
             _httpClient = httpClient;
             _fireGuardOptions = fireGuardOptions.Value;
             _logger = logger;
+            _riskCalculationService = riskCalculationService;
         }
 
         /// <summary>
@@ -45,7 +56,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     return new List<Models.FireDetection>();
                 }
 
-                var fires = ParseCvsResponse(responseContent);
+                var fires = await ParseCvsResponse(responseContent);
 
                 return fires;
             }
@@ -101,7 +112,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         /// <summary>
         /// NASA FIRMS CSV response'unu parse et
         /// </summary>
-        private List<Models.FireDetection> ParseCvsResponse(string csvContent)
+        private async Task<List<Models.FireDetection?>> ParseCvsResponse(string csvContent)
         {
             var fires = new List<Models.FireDetection>();
             try
@@ -119,8 +130,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 {
                     try
                     {
-                        var fire = ParseCsvLine(lines[i]);
-                        if (fire != null && IsNearTurkishCity(fire.Latitude, fire.Longitude))
+                        var fire = await ParseCsvLine(lines[i]);
+                        if (fire != null)
                         {
                             fires.Add(fire);
                         }
@@ -132,10 +143,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 }
                 return fires;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                throw ex;
             }
         }
 
@@ -143,7 +153,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         /// Single CSV line'ı FireDetection entity'ye çevir
         /// NASA FIRMS CSV format: latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp,daynight
         /// </summary>
-        private Models.FireDetection? ParseCsvLine(string csvLine)
+        private async Task<Models.FireDetection> ParseCsvLine(string csvLine)
         {
             var parts = csvLine.Split(',');
 
@@ -162,10 +172,16 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 }
 
                 // Turkey bounds check
-                if (latitude < 35 || latitude > 43 || longitude < 25 || longitude > 46)
+                //if (latitude < 35 || latitude > 43 || longitude < 25 || longitude > 46)
+                //{
+                //    return null; // Outside Turkey
+                //}
+
+                if (!IsPointInPolygon(latitude, longitude, turkeyPolygon))
                 {
-                    return null; // Outside Turkey
+                    return null; // Türkiye dışında
                 }
+
 
                 // Parse other fields
                 double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var brightness);
@@ -203,7 +219,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var satellite = parts[7] ?? "VIIRS";
                 var instrument = parts[8] ?? "VIIRS"; // instrument column
 
-                return new Models.FireDetection
+                var fire = new Models.FireDetection
                 {
                     Id = Guid.NewGuid(),
                     Location = new Point(longitude, latitude) { SRID = 4326 },
@@ -213,10 +229,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     FireRadiativePower = frp > 0 ? frp : null,
                     Satellite = $"{satellite}-{instrument}", // "N-VIIRS"
                     Status = confidence > 40 ? FireStatus.Verified : FireStatus.Detected,
-                    RiskScore = 0, // Will be calculated separately
+                    RiskScore = 0,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
+                fire.RiskScore = await _riskCalculationService.CalculateRiskScoreAsync(fire);
+
+                return fire;
             }
             catch (Exception ex)
             {
@@ -224,42 +243,22 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 return null;
             }
         }
-
-        private bool IsNearTurkishCity(double lat, double lng)
+        bool IsPointInPolygon(double lat, double lng, List<(double lat, double lng)> polygon)
         {
-            var turkishCities = new (double lat, double lng, string name)[]
+            int n = polygon.Count;
+            bool inside = false;
+            for (int i = 0, j = n - 1; i < n; j = i++)
             {
-                (41.0082, 28.9784, "İstanbul"), (39.9334, 32.8597, "Ankara"), (38.4192, 27.1287, "İzmir"),
-                (36.8969, 30.7133, "Antalya"), (37.0000, 35.3213, "Adana"), (37.8667, 32.4833, "Konya"),
-                (40.1885, 29.0610, "Bursa"), (41.2867, 36.3300, "Samsun"), (39.9000, 41.2700, "Erzurum"),
-                (38.4891, 43.4089, "Van"), (37.0662, 37.3833, "Gaziantep"), (36.4018, 36.3498, "Hatay"),
-                (38.7312, 35.4787, "Kayseri"), (41.0015, 39.7178, "Trabzon"), (36.8000, 34.6333, "Mersin"),
-                (37.1674, 38.7955, "Şanlıurfa"), (37.9144, 40.2306, "Diyarbakır")
-            };
+                var xi = polygon[i].lng;
+                var yi = polygon[i].lat;
+                var xj = polygon[j].lng;
+                var yj = polygon[j].lat;
 
-            const double maxDistanceKm = 150;
-
-            foreach (var city in turkishCities)
-            {
-                var latDiff = lat - city.lat;
-                var lngDiff = lng - city.lng;
-                var distance = Math.Sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111; // Rough km conversion
-
-                if (distance <= maxDistanceKm)
-                {
-                    return true;
-                }
+                bool intersect = ((yi > lat) != (yj > lat)) &&
+                                 (lng < (xj - xi) * (lat - yi) / (yj - yi + 1e-10) + xi);
+                if (intersect) inside = !inside;
             }
-
-            // Safe Turkish interior regions
-            if ((lat >= 38.5 && lat <= 40.0 && lng >= 30.5 && lng <= 35.0) || // İç Anadolu
-                (lat >= 37.8 && lat <= 40.5 && lng >= 26.0 && lng <= 30.0) || // Batı Anadolu
-                (lat >= 40.8 && lat <= 42.0 && lng >= 27.0 && lng <= 40.0))   // Karadeniz
-            {
-                return true;
-            }
-
-            return false;
+            return inside;
         }
     }
 }

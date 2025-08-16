@@ -33,6 +33,8 @@ public class FireDetectionModule : IFireGuardModule
         services.AddScoped<INasaFirmsService, NasaFirmsService>();
         services.AddScoped<IFireDataSyncService, FireDataSyncService>();
         services.AddScoped<IBackGroundJobService, BackGroundJobService>();
+        services.AddScoped<IOsmGeoDataService, OSMGeoDataService>();
+        services.AddScoped<IRiskCalculationService, RiskCalculationService>();
         //services.AddScoped<Services.IRiskCalculationService, Services.RiskCalculationService>();
 
         services.AddHttpClient<INasaFirmsService, NasaFirmsService>(client =>

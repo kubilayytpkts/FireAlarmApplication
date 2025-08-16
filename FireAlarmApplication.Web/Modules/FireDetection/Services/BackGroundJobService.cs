@@ -46,7 +46,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
-                var delay = TimeSpan.FromMinutes(1);
+                var delay = TimeSpan.FromMinutes(2);
 
 
                 var jobId = _backgroundJobClient.Schedule<IFireDataSyncService>(
