@@ -36,7 +36,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var cachedFires = await _redis.GetAsync<List<FireDto>>(cachekey);
                 if (cachedFires != null)
                 {
-                    return cachedFires;
+                    return cachedFires; fz
                 }
 
                 var fires = await _context.FireDetections

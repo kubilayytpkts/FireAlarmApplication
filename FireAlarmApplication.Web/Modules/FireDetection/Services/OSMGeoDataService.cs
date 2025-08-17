@@ -33,13 +33,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (cachedData != null)
                 {
-                    _logger.LogDebug("📊 Area info cache HIT for ({Lat}, {Lng})", lat, lng);
                     return cachedData;
                 }
 
-                _logger.LogDebug("📊 Area info cache MISS, collecting data for ({Lat}, {Lng})", lat, lng);
-
-                // 🆕 Task.Run kaldırıldı - deadlock riski var
                 var isInForest = await IsInForestAreaAsync(lat, lng);
                 var isInSettlement = await IsInSettlementAreaAsync(lat, lng);
                 var isInProtected = await IsInProtectedAreaAsync(lat, lng);
@@ -58,12 +54,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     //CachedAt = DateTime.UtcNow
                 };
 
-                // 🆕 Cache'e kaydet (12 saat)
+
                 await _redisService.SetAsync(cacheKey, areaInfo, TimeSpan.FromHours(12));
-
-                _logger.LogInformation("📊 Area info collected: ({Lat}, {Lng}) → Forest:{Forest}, Settlement:{Settlement}, Protected:{Protected}",
-                    lat, lng, isInForest, isInSettlement, isInProtected);
-
                 return areaInfo;
             }
             catch (Exception ex)
