@@ -45,7 +45,6 @@
 		<ProjectReference Include="..\FireGuard.Shared.Contracts\FireGuard.Shared.Contracts.csproj" />
 	</ItemGroup>-->
 	<ItemGroup>
-	  <Folder Include="Modules\AlertSystem\" />
 	  <Folder Include="Modules\Notification\" />
 	  <Folder Include="Modules\Reporting\" />
 	  <Folder Include="Modules\UserManagement\" />
