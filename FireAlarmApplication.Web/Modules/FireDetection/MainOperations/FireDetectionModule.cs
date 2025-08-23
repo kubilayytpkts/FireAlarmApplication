@@ -117,8 +117,7 @@ public class FireDetectionModule : IFireGuardModule
         return Results.Ok(fires);
     }
 
-    private static async Task<IResult> GetFireStatsAsync(
-        IFireDetectionService fireService)
+    private static async Task<IResult> GetFireStatsAsync(IFireDetectionService fireService)
     {
         var stats = await fireService.GetFireStatsAsync();
         return Results.Ok(stats);

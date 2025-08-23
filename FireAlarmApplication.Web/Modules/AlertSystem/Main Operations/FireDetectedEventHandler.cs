@@ -40,8 +40,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                         {
                             var results = await _notificationService.SendBatchNotificationAsync(userAlerts);
                             var successCount = results.Count(x => x.Value);
-
-                            _logger.LogInformation("📱 Notifications sent: {Success}/{Total} successful", successCount, results.Count);
                         }
                         catch (Exception ex)
                         {
