@@ -1,4 +1,5 @@
-﻿using FireAlarmApplication.Web.Modules.FireDetection.Modules;
+﻿using FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations;
+using FireAlarmApplication.Web.Modules.FireDetection.Modules;
 using FireAlarmApplication.Web.Shared.Common;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using Hangfire;
@@ -11,14 +12,12 @@ builder.Services.Configure<FireGuardOptions>(builder.Configuration.GetSection(Fi
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 {
     var configuration = provider.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("Redis")
-        ?? throw new InvalidOperationException("Redis connection string not found");
+    var connectionString = configuration.GetConnectionString("Redis") ?? throw new InvalidOperationException("Redis connection string not found");
 
     var connectionMultiplexer = ConnectionMultiplexer.Connect(connectionString);
 
@@ -41,7 +40,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 
 builder.Services.AddScoped<IRedisService, RedisService>();
 
-// 🕐 Hangfire Configuration (.NET 7 uyumlu)
+// Hangfire Configuration 
 builder.Services.AddHangfire(configuration =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -74,8 +73,8 @@ builder.Services.AddLogging(logging =>
 var modules = new List<IFireGuardModule>
 {
     new FireDetectionModule(),
-    // new UserManagementModule(),
-    // new AlertSystemModule()
+    new AlertSystemModule()
+    //new UserManagementModule(),
 };
 
 builder.AddFireGuardModules(modules.ToArray());

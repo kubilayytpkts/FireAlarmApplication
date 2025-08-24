@@ -1,4 +1,5 @@
-﻿using FireAlarmApplication.Web.Modules.FireDetection.Services;
+﻿using FireAlarmApplication.Web.Modules.FireDetection.Data;
+using FireAlarmApplication.Web.Modules.FireDetection.Services;
 using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.EntityFrameworkCore;
@@ -15,19 +16,18 @@ public class FireDetectionModule : IFireGuardModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 🗄️ PostgreSQL DbContext with PostGIS
-        services.AddDbContext<Data.FireDetectionDbContext>(options =>
+        services.AddDbContext<FireDetectionDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("FireDetectionDB");
 
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
-                // PostGIS extension for spatial data
                 npgsqlOptions.UseNetTopologySuite();
-                // Command timeout for large spatial queries
                 npgsqlOptions.CommandTimeout(60);
             });
         });
+
+
 
         services.AddScoped<IFireDetectionService, FireDetectionService>();
         services.AddScoped<INasaFirmsService, NasaFirmsService>();

@@ -34,5 +34,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces
         /// Alert için mesaj içeriğini genarete et
         /// </summary>
         Task<(string title, string message)> GenerateAlertContentAsync(double confidence, double latitude, double longitude);
+
     }
 }

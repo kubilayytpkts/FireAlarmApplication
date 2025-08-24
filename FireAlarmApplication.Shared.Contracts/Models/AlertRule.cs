@@ -69,3 +69,4 @@ namespace FireAlarmApplication.Shared.Contracts.Models
 
         }
     }
+}
