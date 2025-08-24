@@ -8,7 +8,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces
         /// <summary>
         /// Alert için uygun kullanıcıları bul ve useralert oluştur
         /// </summary>
-        Task<List<UserAlert>> CreateUserAlertsAsync(Guid fireAlertId);
+        Task<List<UserAlert>> CreateUserAlertsAsync(Guid);
 
         /// <summary>
         /// Kullanıcının aktif alertlerini getir
