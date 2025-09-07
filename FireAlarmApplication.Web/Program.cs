@@ -1,9 +1,12 @@
-﻿using FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations;
+﻿using FireAlarmApplication.Web.Modules.AlertSystem.Data;
+using FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations;
+using FireAlarmApplication.Web.Modules.FireDetection.Data;
 using FireAlarmApplication.Web.Modules.FireDetection.Modules;
 using FireAlarmApplication.Web.Shared.Common;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +14,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<FireGuardOptions>(builder.Configuration.GetSection(FireGuardOptions.SectionName));
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// FireDetectionDbContext
+builder.Services.AddDbContext<FireDetectionDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsql =>
+    {
+        npgsql.UseNetTopologySuite();
+        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "fire_detection");
+    }));
+
+// AlertSystemDbContext
+builder.Services.AddDbContext<AlertSystemDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsql =>
+    {
+        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "alert_system");
+    }));
+
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 

@@ -141,19 +141,85 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             }
         }
 
-        public Task<List<UserAlert>> GetUserAlertsAsync(Guid userId, bool onlyUnread = false)
+        /// <summary>
+        /// Kullanıcının aktif alertlerini getir
+        /// </summary>
+        public async Task<List<UserAlert>> GetUserAlertsAsync(Guid userId, bool onlyUnread = false)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var query = _alertSystemDbContext.UserAlerts.Include(x => x.FireAlert).Where(x => x.UserId == userId);
+
+                if (onlyUnread)
+                    query.Where(x => x.ReadAt == null);
+
+                var alerts = await query.OrderByDescending(userAlert => userAlert.CreatedAt).Take(50).ToListAsync();
+
+                return alerts;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting alerts for User {UserId}", userId);
+                return new List<UserAlert>();
+            }
         }
 
-        public Task<bool> MarkAsReadAsync(Guid fireAlertId, Guid userId)
+        /// <summary>
+        /// UserAlert'i okundu olarak işaretle
+        /// </summary>
+        public async Task<bool> MarkAsReadAsync(Guid fireAlertId, Guid userId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var userAlert = _alertSystemDbContext.UserAlerts.FirstOrDefault(userAlert => userAlert.FireAlertId == fireAlertId && userAlert.UserId == userId);
+                if (userAlert == null)
+                {
+                    _logger.LogWarning("UserAlert not found for User {UserId} and FireAlert {AlertId}");
+                    return false;
+                }
+
+                if (userAlert.ReadAt.HasValue) return true;
+
+                userAlert.ReadAt = DateTime.UtcNow;
+                await _alertSystemDbContext.SaveChangesAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking UserAlert as read");
+                return false;
+            }
         }
 
-        public Task<bool> ShouldReceiveAlertAsync(Guid userId, double fireLatitude, double fireLongitude, double confidence)
+        public async Task<bool> ShouldReceiveAlertAsync(Guid userId, double fireLatitude, double fireLongitude, double confidence)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // Cache'den kontrol - son 1 saatte bu bölge için alert aldı mı?
+                var recentAlertKey = $"recent_alert:{userId}:{fireLatitude:F2}:{fireLongitude:F2}";
+                var hasRecentAlert = await _redisService.GetAsync<bool?>(recentAlertKey);
+
+                if (hasRecentAlert == true)
+                {
+                    _logger.LogDebug("User {UserId} recently received alert for this area", userId);
+                    return false;
+                }
+
+                // TODO: Kullanıcı tercihlerini kontrol et (notification preferences)
+                // TODO: Kullanıcı aktif mi kontrol et
+                // TODO: Do Not Disturb saatleri kontrol et
+
+                // Alert gönderilecek, cache'e kaydet
+                await _redisService.SetAsync(recentAlertKey, true, TimeSpan.FromHours(1));
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if user should receive alert");
+                return true;
+            }
         }
         #region HELPER METHODS
         private async Task<UserAlert?> CreateUserAlertAsync(FireAlert fireAlert, UserLocationInfo user, Double distance, AlertRule alertRule)

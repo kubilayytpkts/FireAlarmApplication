@@ -11,6 +11,7 @@ public class FireGuardOptions
     public NasaFirmsOptions NasaFirms { get; set; } = new();
     public CacheOptions Cache { get; set; } = new();
     public RabbitMQOptions RabbitMQ { get; set; } = new();
+    public ConnectionStrings ConnectionStrings { get; set; } = new();
 }
 
 /// <summary>
@@ -44,4 +45,9 @@ public class RabbitMQOptions
     public string UserName { get; set; } = "guest";
     public string Password { get; set; } = "guest";
     public string VirtualHost { get; set; } = "/";
+}
+
+public class ConnectionStrings
+{
+    public string DefaultConnection { get; set; }
 }

@@ -1,4 +1,6 @@
 ﻿using FireAlarmApplication.Web.Modules.AlertSystem.Data;
+using FireAlarmApplication.Web.Modules.AlertSystem.Services;
+using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +16,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             {
                 services.AddDbContext<AlertSystemDbContext>(options =>
                 {
-                    var connectionString = configuration.GetConnectionString("AlertDB");
+                    var connectionString = configuration.GetConnectionString("DefaultConnection");
 
                     options.UseNpgsql(connectionString, npgsqlOptions =>
                     {
@@ -22,6 +24,12 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                         npgsqlOptions.CommandTimeout(60);
                     });
                 });
+                services.AddScoped<IAlertService, AlertService>();
+                services.AddScoped<INotificationService, NotificationService>();
+                services.AddScoped<IUserAlertService, UserAlertService>();
+                services.AddScoped<IUserAlertService, UserAlertService>();
+                services.AddScoped<IGeofencingService, GeofencingService>();
+                services.AddScoped<IAlertRuleService, AlertRuleService>();
             }
             catch (Exception ex)
             {

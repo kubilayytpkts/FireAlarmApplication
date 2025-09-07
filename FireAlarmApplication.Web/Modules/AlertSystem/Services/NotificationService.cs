@@ -165,7 +165,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error sending notification for UserAlert {UserAlertId}", userAlert.Id);
+                _logger.LogError(ex, "Error sending notification for UserAlert {UserAlertId}", userAlert.Id);
                 return false;
             }
         }
@@ -249,9 +249,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
             // Enable publisher confirms
             _channel.ConfirmSelect();
-
-            _logger.LogInformation("📦 RabbitMQ topology created: Exchange={Exchange}, Queues=[email, sms, push, dlq]",
-                EXCHANGE_NAME);
         }
 
         /// <summary>

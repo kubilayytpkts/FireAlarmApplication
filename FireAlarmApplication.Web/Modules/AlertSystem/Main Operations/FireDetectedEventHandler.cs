@@ -23,7 +23,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
         {
             try
             {
-                _logger.LogInformation("🚨 Processing FireDetectedEvent for fire {FireId} with confidence {Confidence}%", notification.FireId, notification.Confidence);
+                _logger.LogInformation("Processing FireDetectedEvent for fire {FireId} with confidence {Confidence}%", notification.FireId, notification.Confidence);
 
                 //fire alert oluştur
                 var fireAlert = await _alertService.CreateFireAlertAsync(notification.FireId, notification.Confidence, notification.Latitude, notification.Longitude);

@@ -9,7 +9,7 @@ services:
     image: postgis/postgis:15-3.3
     container_name: fireguard-postgres
     environment:
-      POSTGRES_DB: FireGuardDB
+      POSTGRES_DB: FireDetectionDB
       POSTGRES_USER: fireguard
       POSTGRES_PASSWORD: fireguard123
     ports:
@@ -21,7 +21,7 @@ services:
       - fireguard-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fireguard -d FireGuardDB"]
+      test: ["CMD-SHELL", "pg_isready -U fireguard -d FireDetectionDB"]
       interval: 30s
       timeout: 10s
       retries: 3
