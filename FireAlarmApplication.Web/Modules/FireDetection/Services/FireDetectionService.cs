@@ -178,14 +178,14 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 );
                 await _mediator.Publish(fireEvent);
 
-                _logger.LogInformation("🔥 New fire created: {FireId} at ({Lat}, {Lng}) from {Satellite}",
+                _logger.LogInformation("New fire created: {FireId} at ({Lat}, {Lng}) from {Satellite}",
                     fireDetection.Id, fireDetection.Latitude, fireDetection.Longitude, fireDetection.Satellite);
 
                 return MapToDto(fireDetection);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error creating fire detection");
+                _logger.LogError(ex, " Error creating fire detection");
                 throw;
             }
         }

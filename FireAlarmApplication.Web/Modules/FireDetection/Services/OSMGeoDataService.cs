@@ -60,7 +60,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error getting area info for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error getting area info for ({Lat}, {Lng})", lat, lng);
                 return new OSMAreaInfo(); // 🆕 Boş nesne döndür
             }
         }
@@ -74,22 +74,22 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (cachedResult.HasValue)
                 {
-                    _logger.LogDebug("🌲 Forest check cache HIT for ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug(" Forest check cache HIT for ({Lat}, {Lng})", lat, lng);
                     return cachedResult.Value;
                 }
 
-                _logger.LogDebug("🌲 Forest check cache MISS, querying OSM for ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug("Forest check cache MISS, querying OSM for ({Lat}, {Lng})", lat, lng);
 
                 var isInForest = await QueryOSMForForest(lat, lng);
 
                 await _redisService.SetAsync(cacheKey, isInForest, TimeSpan.FromHours(CACHE_HOURS));
 
-                _logger.LogInformation("🌲 Forest check: ({Lat}, {Lng}) = {Result}", lat, lng, isInForest);
+                _logger.LogInformation("Forest check: ({Lat}, {Lng}) = {Result}", lat, lng, isInForest);
                 return isInForest;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error checking forest for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error checking forest for ({Lat}, {Lng})", lat, lng);
                 return false;
             }
         }
@@ -103,22 +103,22 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (cachedResult.HasValue)
                 {
-                    _logger.LogDebug("🏘️ Settlement check cache HIT for ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug("Settlement check cache HIT for ({Lat}, {Lng})", lat, lng);
                     return cachedResult.Value;
                 }
 
-                _logger.LogDebug("🏘️ Settlement check cache MISS, querying OSM for ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug("Settlement check cache MISS, querying OSM for ({Lat}, {Lng})", lat, lng);
                 var isInSettlement = await QueryOSMForSettlement(lat, lng);
 
                 // 🆕 DÜZELTME: isInSettlement parametresi eklendi
                 await _redisService.SetAsync(cacheKey, isInSettlement, TimeSpan.FromHours(CACHE_HOURS));
 
-                _logger.LogInformation("🏘️ Settlement check: ({Lat}, {Lng}) = {Result}", lat, lng, isInSettlement);
+                _logger.LogInformation("Settlement check: ({Lat}, {Lng}) = {Result}", lat, lng, isInSettlement);
                 return isInSettlement;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error checking settlement for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error checking settlement for ({Lat}, {Lng})", lat, lng);
                 return false;
             }
         }
@@ -132,21 +132,21 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (cachedResult.HasValue)
                 {
-                    _logger.LogDebug("🛡️ Protected area check cache HIT for ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug("Protected area check cache HIT for ({Lat}, {Lng})", lat, lng);
                     return cachedResult.Value;
                 }
 
-                _logger.LogDebug("🛡️ Protected area check cache MISS, querying OSM for ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug("Protected area check cache MISS, querying OSM for ({Lat}, {Lng})", lat, lng);
                 var isInProtected = await QueryOSMForProtectedArea(lat, lng);
 
                 await _redisService.SetAsync(cacheKey, isInProtected, TimeSpan.FromHours(CACHE_HOURS));
 
-                _logger.LogInformation("🛡️ Protected area check: ({Lat}, {Lng}) = {Result}", lat, lng, isInProtected);
+                _logger.LogInformation("Protected area check: ({Lat}, {Lng}) = {Result}", lat, lng, isInProtected);
                 return isInProtected;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error checking Protected Area for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error checking Protected Area for ({Lat}, {Lng})", lat, lng);
                 return false;
             }
         }
@@ -160,14 +160,14 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (cachedDistance.HasValue)
                 {
-                    _logger.LogDebug("🌲📏 Forest distance cache HIT for ({Lat}, {Lng}): {Distance}km", lat, lng, cachedDistance.Value);
+                    _logger.LogDebug("Forest distance cache HIT for ({Lat}, {Lng}): {Distance}km", lat, lng, cachedDistance.Value);
                     return cachedDistance.Value;
                 }
 
                 // Önce içinde mi kontrol et
                 if (await IsInForestAreaAsync(lat, lng))
                 {
-                    _logger.LogDebug("🌲📏 Already inside forest: ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug("Already inside forest: ({Lat}, {Lng})", lat, lng);
                     await _redisService.SetAsync(cacheKey, 0.0, TimeSpan.FromHours(CACHE_HOURS));
                     return 0.0;
                 }
@@ -177,12 +177,12 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 await _redisService.SetAsync(cacheKey, nearestDistance, TimeSpan.FromHours(CACHE_HOURS));
 
-                _logger.LogInformation("🌲📏 Nearest forest distance: ({Lat}, {Lng}) = {Distance:F1}km", lat, lng, nearestDistance);
+                _logger.LogInformation("Nearest forest distance: ({Lat}, {Lng}) = {Distance:F1}km", lat, lng, nearestDistance);
                 return nearestDistance;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error calculating forest distance for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error calculating forest distance for ({Lat}, {Lng})", lat, lng);
                 return double.MaxValue;
             }
         }
@@ -196,14 +196,14 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (cachedDistance.HasValue)
                 {
-                    _logger.LogDebug("🏘️📏 Settlement distance cache HIT for ({Lat}, {Lng}): {Distance}km", lat, lng, cachedDistance.Value);
+                    _logger.LogDebug("Settlement distance cache HIT for ({Lat}, {Lng}): {Distance}km", lat, lng, cachedDistance.Value);
                     return cachedDistance.Value;
                 }
 
                 // Yerleşim içindeyse mesafe 0
                 if (await IsInSettlementAreaAsync(lat, lng))
                 {
-                    _logger.LogDebug("🏘️📏 Already inside settlement: ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug("Already inside settlement: ({Lat}, {Lng})", lat, lng);
                     await _redisService.SetAsync(cacheKey, 0.0, TimeSpan.FromHours(CACHE_HOURS));
                     return 0.0;
                 }
@@ -211,12 +211,12 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var nearestDistance = await QueryNearestSettlementDistance(lat, lng);
                 await _redisService.SetAsync(cacheKey, nearestDistance, TimeSpan.FromHours(CACHE_HOURS));
 
-                _logger.LogInformation("🏘️📏 Nearest settlement distance: ({Lat}, {Lng}) = {Distance:F1}km", lat, lng, nearestDistance);
+                _logger.LogInformation("Nearest settlement distance: ({Lat}, {Lng}) = {Distance:F1}km", lat, lng, nearestDistance);
                 return nearestDistance;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error calculating settlement distance for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error calculating settlement distance for ({Lat}, {Lng})", lat, lng);
                 return double.MaxValue;
             }
         }
@@ -226,7 +226,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
-                _logger.LogDebug("🏥 Checking OSM service health...");
+                _logger.LogDebug("Checking OSM service health...");
 
                 // Basit test query - Ankara'da bir city node arayalım
                 var testQuery = @"[out:json][timeout:5];node(39.9,32.8,40.0,32.9)[""place""=""city""];out 1;";
@@ -236,12 +236,12 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 bool isHealthy = response.IsSuccessStatusCode;
 
-                _logger.LogInformation("🏥 OSM service health: {Status}", isHealthy ? "HEALTHY" : "UNHEALTHY");
+                _logger.LogInformation("OSM service health: {Status}", isHealthy ? "HEALTHY" : "UNHEALTHY");
                 return isHealthy;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ OSM service health check failed");
+                _logger.LogError(ex, "OSM service health check failed");
                 return false;
             }
         }
@@ -293,7 +293,7 @@ out count;";
 
             try
             {
-                _logger.LogDebug("🌲 OSM Forest Query: ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug("OSM Forest Query: ({Lat}, {Lng})", lat, lng);
 
                 // 🆕 DÜZELTME: Content-Type eklendi
                 var content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain");
@@ -302,23 +302,23 @@ out count;";
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("⚠️ OSM API returned {StatusCode} for forest query. Response: {Response}",
+                    _logger.LogWarning("OSM API returned {StatusCode} for forest query. Response: {Response}",
                         response.StatusCode, errorContent);
                     return false;
                 }
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
-                _logger.LogDebug("🌲 OSM Response: {Content}", jsonResponse);
+                _logger.LogDebug("OSM Response: {Content}", jsonResponse);
 
                 var osmResult = System.Text.Json.JsonSerializer.Deserialize<OSMResponse>(jsonResponse);
                 bool hasForest = osmResult?.Elements?.Any() == true;
 
-                _logger.LogDebug("🌲 Forest result: {HasForest} (Elements: {Count})", hasForest, osmResult?.Elements?.Count ?? 0);
+                _logger.LogDebug("Forest result: {HasForest} (Elements: {Count})", hasForest, osmResult?.Elements?.Count ?? 0);
                 return hasForest;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error querying OSM for forest at ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error querying OSM for forest at ({Lat}, {Lng})", lat, lng);
                 return false;
             }
         }
@@ -338,7 +338,7 @@ out count;";
 );
 out count;";
 
-                _logger.LogDebug("🏘️ OSM Settlement Query: ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug("OSM Settlement Query: ({Lat}, {Lng})", lat, lng);
 
                 var content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain");
                 var response = await _httpClient.PostAsync("https://overpass-api.de/api/interpreter", content);
@@ -346,7 +346,7 @@ out count;";
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("⚠️ OSM API returned {StatusCode} for settlement query. Response: {Response}",
+                    _logger.LogWarning("OSM API returned {StatusCode} for settlement query. Response: {Response}",
                         response.StatusCode, errorContent);
                     return false;
                 }
@@ -355,12 +355,12 @@ out count;";
                 var osmResult = System.Text.Json.JsonSerializer.Deserialize<OSMResponse>(jsonResponse);
                 bool hasSettlement = osmResult?.Elements?.Any() == true;
 
-                _logger.LogDebug("🏘️ Settlement result: {HasSettlement} (Elements: {Count})", hasSettlement, osmResult?.Elements?.Count ?? 0);
+                _logger.LogDebug("Settlement result: {HasSettlement} (Elements: {Count})", hasSettlement, osmResult?.Elements?.Count ?? 0);
                 return hasSettlement;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error querying OSM for settlement at ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error querying OSM for settlement at ({Lat}, {Lng})", lat, lng);
                 return false;
             }
         }
@@ -389,7 +389,7 @@ out count;";
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("⚠️ OSM API returned {StatusCode} for protected area query. Response: {Response}",
+                    _logger.LogWarning("OSM API returned {StatusCode} for protected area query. Response: {Response}",
                         response.StatusCode, errorContent);
                     return false;
                 }
@@ -398,12 +398,12 @@ out count;";
                 var osmResult = System.Text.Json.JsonSerializer.Deserialize<OSMResponse>(jsonResponse);
                 bool hasProtectedArea = osmResult?.Elements?.Any() == true;
 
-                _logger.LogDebug("🛡️ Protected area result: {HasProtected} (Elements: {Count})", hasProtectedArea, osmResult?.Elements?.Count ?? 0);
+                _logger.LogDebug("Protected area result: {HasProtected} (Elements: {Count})", hasProtectedArea, osmResult?.Elements?.Count ?? 0);
                 return hasProtectedArea;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error querying OSM for protected area at ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error querying OSM for protected area at ({Lat}, {Lng})", lat, lng);
                 return false;
             }
         }
@@ -424,14 +424,14 @@ out count;";
 );
 out center meta;";
 
-                _logger.LogDebug("🌲📏 OSM Nearest Forest Query: ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug("OSM Nearest Forest Query: ({Lat}, {Lng})", lat, lng);
 
                 var content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain");
                 var response = await _httpClient.PostAsync("https://overpass-api.de/api/interpreter", content);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("⚠️ OSM API returned {StatusCode} for forest distance query", response.StatusCode);
+                    _logger.LogWarning("OSM API returned {StatusCode} for forest distance query", response.StatusCode);
                     return double.MaxValue;
                 }
 
@@ -440,7 +440,7 @@ out center meta;";
 
                 if (osmResult?.Elements == null || !osmResult.Elements.Any())
                 {
-                    _logger.LogDebug("🌲📏 No forests found within 50km of ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug("No forests found within 50km of ({Lat}, {Lng})", lat, lng);
                     return double.MaxValue;
                 }
 
@@ -457,12 +457,12 @@ out center meta;";
                     }
                 }
 
-                _logger.LogDebug("🌲📏 Nearest forest found: {Distance:F1}km from ({Lat}, {Lng})", minDistance, lat, lng);
+                _logger.LogDebug("Nearest forest found: {Distance:F1}km from ({Lat}, {Lng})", minDistance, lat, lng);
                 return minDistance;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error querying nearest forest distance for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error querying nearest forest distance for ({Lat}, {Lng})", lat, lng);
                 return double.MaxValue;
             }
         }
@@ -482,7 +482,7 @@ out center meta;";
 );
 out center meta;";
 
-                _logger.LogDebug("🏘️📏 OSM Nearest Settlement Query: ({Lat}, {Lng})", lat, lng);
+                _logger.LogDebug(" OSM Nearest Settlement Query: ({Lat}, {Lng})", lat, lng);
 
                 var content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain");
                 var response = await _httpClient.PostAsync("https://overpass-api.de/api/interpreter", content);
@@ -497,7 +497,7 @@ out center meta;";
 
                 if (osmResult?.Elements == null || !osmResult.Elements.Any())
                 {
-                    _logger.LogDebug("🏘️📏 No settlements found within 30km of ({Lat}, {Lng})", lat, lng);
+                    _logger.LogDebug("No settlements found within 30km of ({Lat}, {Lng})", lat, lng);
                     return double.MaxValue;
                 }
 
@@ -514,12 +514,12 @@ out center meta;";
                     }
                 }
 
-                _logger.LogDebug("🏘️📏 Nearest settlement found: {Distance:F1}km from ({Lat}, {Lng})", minDistance, lat, lng);
+                _logger.LogDebug("Nearest settlement found: {Distance:F1}km from ({Lat}, {Lng})", minDistance, lat, lng);
                 return minDistance;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error querying nearest settlement distance for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, " Error querying nearest settlement distance for ({Lat}, {Lng})", lat, lng);
                 return double.MaxValue;
             }
         }
@@ -584,7 +584,7 @@ out tags;";
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Error getting area names for ({Lat}, {Lng})", lat, lng);
+                _logger.LogWarning(ex, "Error getting area names for ({Lat}, {Lng})", lat, lng);
                 return new List<string>();
             }
         }

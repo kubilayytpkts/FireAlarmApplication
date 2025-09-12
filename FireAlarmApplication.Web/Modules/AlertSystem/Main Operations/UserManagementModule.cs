@@ -6,15 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 {
-    public class AlertSystemModule : IFireGuardModule
+    public class UserManagementModule : IFireGuardModule
     {
-        public string ModuleName => "AlertSystem";
+        public string ModuleName => throw new NotImplementedException();
 
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
             try
             {
-                services.AddDbContext<AlertSystemDbContext>(options =>
+                services.AddDbContext<UserManagementDbContext>(options =>
                 {
                     var connectionString = configuration.GetConnectionString("DefaultConnection");
 
@@ -25,28 +25,24 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                         npgsqlOptions.CommandTimeout(60);
                     });
                 });
-                services.AddScoped<IAlertService, AlertService>();
-                services.AddScoped<INotificationService, NotificationService>();
-                services.AddScoped<IUserAlertService, UserAlertService>();
-                services.AddScoped<IUserAlertService, UserAlertService>();
-                services.AddScoped<IGeofencingService, GeofencingService>();
-                services.AddScoped<IAlertRuleService, AlertRuleService>();
+                services.AddScoped<IUserManagementService, UserManagementService>();
             }
             catch (Exception ex)
             {
-
                 throw ex;
             }
         }
-
         public void ConfigureEndpoints(IEndpointRouteBuilder endpoints)
         {
             throw new NotImplementedException();
         }
 
+
         public Task SeedDataAsync(IServiceProvider serviceProvider)
         {
             throw new NotImplementedException();
         }
+
+
     }
 }

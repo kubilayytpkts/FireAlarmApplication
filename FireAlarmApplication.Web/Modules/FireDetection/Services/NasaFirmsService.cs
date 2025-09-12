@@ -42,7 +42,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var apiKey = _fireGuardOptions.NasaFirms.ApiKey;
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    _logger.LogWarning("⚠️ NASA FIRMS API key not configured");
+                    _logger.LogWarning("NASA FIRMS API key not configured");
                     return new List<Models.FireDetection>();
                 }
 

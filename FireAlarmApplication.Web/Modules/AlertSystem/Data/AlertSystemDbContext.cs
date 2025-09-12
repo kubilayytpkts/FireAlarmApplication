@@ -6,7 +6,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Data
 {
     /// <summary>
     /// AlertSystem module database context
-    /// FireAlert, UserAlert, AlertFeedback, AlertRule entity'lerini yönetir
+    /// FireAlert, UserAlert, AlertFeedback, AlertRule,User entity'lerini yönetir
     /// </summary>
     public class AlertSystemDbContext : DbContext
     {
@@ -17,6 +17,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Data
         public DbSet<UserAlert> UserAlerts { get; set; } = null!;
         public DbSet<AlertFeedback> AlertFeedbacks { get; set; } = null!;
         public DbSet<AlertRule> AlertRules { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -25,87 +26,151 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Data
             // Schema
             modelBuilder.HasDefaultSchema("alert_system");
 
-            // FireAlert Configuration
-            modelBuilder.Entity<FireAlert>(entity =>
+            modelBuilder.Entity<User>(entity =>
             {
-                entity.ToTable("fire_alerts");
+                entity.ToTable("users");
                 entity.HasKey(e => e.Id);
 
                 // Indexes
-                entity.HasIndex(e => e.FireDetectionId)
-                      .HasDatabaseName("ix_fire_alerts_fire_detection_id");
+                entity.HasIndex(e => e.Email)
+                      .IsUnique()
+                      .HasDatabaseName("ix_users_email");
 
-                entity.HasIndex(e => e.Status)
-                      .HasDatabaseName("ix_fire_alerts_status");
+                entity.HasIndex(e => e.PhoneNumber)
+                      .HasDatabaseName("ix_users_phone");       
 
-                entity.HasIndex(e => new { e.Status, e.ExpiresAt })
-                      .HasDatabaseName("ix_fire_alerts_status_expires");
+                entity.HasIndex(e => e.IsActive)
+                      .HasDatabaseName("ix_users_active");
 
-                entity.HasIndex(e => new { e.CenterLatitude, e.CenterLongitude })
-                      .HasDatabaseName("ix_fire_alerts_location");
+                entity.HasIndex(e => e.Role)
+                      .HasDatabaseName("ix_users_role");
+
+                // Spatial indexes for PostGIS
+                entity.HasIndex(e => e.CurrentLocation)
+                      .HasMethod("GIST")
+                      .HasDatabaseName("ix_users_current_location");
+
+                entity.HasIndex(e => e.HomeLocation)
+                      .HasMethod("GIST")
+                      .HasDatabaseName("ix_users_home_location");
 
                 // Properties
                 entity.Property(e => e.Id)
                       .HasDefaultValueSql("gen_random_uuid()");
 
-                entity.Property(e => e.Title)
-                      .HasMaxLength(200)
+                entity.Property(e => e.Email)
                       .IsRequired();
 
-                entity.Property(e => e.Message)
-                      .HasMaxLength(1000)
-                      .IsRequired();
-
-                entity.Property(e => e.LocationDescription)
-                      .HasMaxLength(500);
-
-                entity.Property(e => e.FeedbackSummary)
-                      .HasMaxLength(500);
-
-                entity.Property(e => e.Severity)
+                entity.Property(e => e.Role)
                       .HasConversion<int>();
 
-                entity.Property(e => e.Status)
-                      .HasConversion<int>()
-                      .HasDefaultValue(AlertStatus.Active);
+                entity.Property(e => e.CurrentLocation)
+                      .HasColumnType("geometry(Point,4326)");
 
-                entity.Property(e => e.OriginalConfidence)
-                      .HasPrecision(5, 2);
+                entity.Property(e => e.HomeLocation)
+                      .HasColumnType("geometry(Point,4326)");
 
-                entity.Property(e => e.MaxRadiusKm)
+                entity.Property(e => e.LocationAccuracy)
                       .HasPrecision(10, 2);
-
-                entity.Property(e => e.CenterLatitude)
-                      .HasPrecision(10, 6);
-
-                entity.Property(e => e.CenterLongitude)
-                      .HasPrecision(10, 6);
 
                 entity.Property(e => e.CreatedAt)
                       .HasColumnType("timestamp with time zone")
                       .HasDefaultValueSql("now()");
 
-                entity.Property(e => e.LastFeedbackAt)
-                      .HasColumnType("timestamp with time zone");
-
-                entity.Property(e => e.ResolvedAt)
-                      .HasColumnType("timestamp with time zone");
-
-                entity.Property(e => e.ExpiresAt)
+                entity.Property(e => e.UpdatedAt)
                       .HasColumnType("timestamp with time zone")
-                      .IsRequired();
+                      .HasDefaultValueSql("now()");
 
-                // Relationships
-                entity.HasMany(e => e.UserAlerts)
-                      .WithOne(ua => ua.FireAlert)
-                      .HasForeignKey(ua => ua.FireAlertId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                entity.Property(e => e.LastLocationUpdate)
+                      .HasColumnType("timestamp with time zone");
 
-                entity.HasMany(e => e.Feedbacks)
-                      .WithOne(f => f.FireAlert)
-                      .HasForeignKey(f => f.FireAlertId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                entity.Property(e => e.LastLoginAt)
+                      .HasColumnType("timestamp with time zone");
             });
+
+
+
+            // FireAlert Configuration
+            modelBuilder.Entity<FireAlert>(entity =>
+                {
+                    entity.ToTable("fire_alerts");
+                    entity.HasKey(e => e.Id);
+
+                    // Indexes
+                    entity.HasIndex(e => e.FireDetectionId)
+                          .HasDatabaseName("ix_fire_alerts_fire_detection_id");
+
+                    entity.HasIndex(e => e.Status)
+                          .HasDatabaseName("ix_fire_alerts_status");
+
+                    entity.HasIndex(e => new { e.Status, e.ExpiresAt })
+                          .HasDatabaseName("ix_fire_alerts_status_expires");
+
+                    entity.HasIndex(e => new { e.CenterLatitude, e.CenterLongitude })
+                          .HasDatabaseName("ix_fire_alerts_location");
+
+                    // Properties
+                    entity.Property(e => e.Id)
+                          .HasDefaultValueSql("gen_random_uuid()");
+
+                    entity.Property(e => e.Title)
+                          .HasMaxLength(200)
+                          .IsRequired();
+
+                    entity.Property(e => e.Message)
+                          .HasMaxLength(1000)
+                          .IsRequired();
+
+                    entity.Property(e => e.LocationDescription)
+                          .HasMaxLength(500);
+
+                    entity.Property(e => e.FeedbackSummary)
+                          .HasMaxLength(500);
+
+                    entity.Property(e => e.Severity)
+                          .HasConversion<int>();
+
+                    entity.Property(e => e.Status)
+                          .HasConversion<int>()
+                          .HasDefaultValue(AlertStatus.Active);
+
+                    entity.Property(e => e.OriginalConfidence)
+                          .HasPrecision(5, 2);
+
+                    entity.Property(e => e.MaxRadiusKm)
+                          .HasPrecision(10, 2);
+
+                    entity.Property(e => e.CenterLatitude)
+                          .HasPrecision(10, 6);
+
+                    entity.Property(e => e.CenterLongitude)
+                          .HasPrecision(10, 6);
+
+                    entity.Property(e => e.CreatedAt)
+                          .HasColumnType("timestamp with time zone")
+                          .HasDefaultValueSql("now()");
+
+                    entity.Property(e => e.LastFeedbackAt)
+                          .HasColumnType("timestamp with time zone");
+
+                    entity.Property(e => e.ResolvedAt)
+                          .HasColumnType("timestamp with time zone");
+
+                    entity.Property(e => e.ExpiresAt)
+                          .HasColumnType("timestamp with time zone")
+                          .IsRequired();
+
+                    // Relationships
+                    entity.HasMany(e => e.UserAlerts)
+                          .WithOne(ua => ua.FireAlert)
+                          .HasForeignKey(ua => ua.FireAlertId)
+                          .OnDelete(DeleteBehavior.Cascade);
+
+                    entity.HasMany(e => e.Feedbacks)
+                          .WithOne(f => f.FireAlert)
+                          .HasForeignKey(f => f.FireAlertId)
+                          .OnDelete(DeleteBehavior.Cascade);
+                });
 
             // UserAlert Configuration
             modelBuilder.Entity<UserAlert>(entity =>

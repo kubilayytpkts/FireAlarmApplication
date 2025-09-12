@@ -33,17 +33,17 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
-                _logger.LogInformation("🌍 Starting NASA FIRMS data sync...");
+                _logger.LogInformation("Starting NASA FIRMS data sync...");
 
                 var nasaFires = await _nasaFirmsService.FetchActiveFiresAsync(_options.DefaultArea, _options.DefaultDayRange);
 
                 if (!nasaFires.Any())
                 {
-                    _logger.LogInformation("ℹ️ No new fires from NASA FIRMS");
+                    _logger.LogInformation("No new fires from NASA FIRMS");
                     return 0;
                 }
 
-                _logger.LogInformation("📥 Received {Count} fires from NASA FIRMS", nasaFires.Count);
+                _logger.LogInformation("Received {Count} fires from NASA FIRMS", nasaFires.Count);
 
                 var newFiresCount = 0;
                 var duplicateCount = 0;
@@ -60,13 +60,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     if (isDuplicate)
                     {
                         duplicateCount++;
-                        _logger.LogDebug("🔄 Duplicate fire skipped: ({Lat}, {Lng}) from {Satellite}", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Satellite);
+                        _logger.LogDebug("Duplicate fire skipped: ({Lat}, {Lng}) from {Satellite}", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Satellite);
                         continue;
                     }
                     await _fireDecetionService.CreateFireDetectionAsync(nasaFire);
                     newFiresCount++;
 
-                    _logger.LogDebug("🔥 New fire added: ({Lat}, {Lng}) confidence: {Confidence}%", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Confidence);
+                    _logger.LogDebug("New fire added: ({Lat}, {Lng}) confidence: {Confidence}%", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Confidence);
                 }
                 // Son sync zamanını kaydet
                 await _redisService.SetAsync("last_nasa_async", DateTime.UtcNow, TimeSpan.FromDays(1));
@@ -74,14 +74,14 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 await _redisService.RemoveAsync("active_fires_turkey");
                 await _redisService.RemoveAsync("fire_stats_turkey");
 
-                _logger.LogInformation("✅ NASA sync completed: {New} new fires, {Duplicate} duplicates skipped", newFiresCount, duplicateCount);
+                _logger.LogInformation("NASA sync completed: {New} new fires, {Duplicate} duplicates skipped", newFiresCount, duplicateCount);
 
                 return newFiresCount;
 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error syncing fires from NASA FIRMS");
+                _logger.LogError(ex, "Error syncing fires from NASA FIRMS");
                 throw;
             }
         }
