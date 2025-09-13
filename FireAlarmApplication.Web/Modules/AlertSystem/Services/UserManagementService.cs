@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
 using System.Net;
+using System.Security.Claims;
 
 namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 {
@@ -21,14 +22,14 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             _redisService = redisService;
             _logger = logger;
         }
-        public async Task<ServiceResponse> Register([FromBody] RegisterRequest request)
+        public async Task<ServiceResponse<int>> Register([FromBody] RegisterRequest request)
         {
             try
             {
                 //email kontrolü
                 var existingUser = await _userManagementDbContext.Users.AnyAsync(x => x.Email == request.Email);
                 if (existingUser)
-                    return new ServiceResponse
+                    return new ServiceResponse<int>
                     {
                         Message = "Email already registered",
                         StatusCode = HttpStatusCode.BadRequest,
@@ -64,7 +65,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
                 _logger.LogInformation("New user registered: {Email}", user.Email);
 
-                return new ServiceResponse
+                return new ServiceResponse<int>
                 {
                     Message = "Registiration Successful",
                     StatusCode = HttpStatusCode.OK,
@@ -75,7 +76,64 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during user registration");
-                return new ServiceResponse { Success = false, StatusCode = HttpStatusCode.InternalServerError, Message = $"Error during user registration:{ex.Message}" };
+                return new ServiceResponse<int> { Success = false, StatusCode = HttpStatusCode.InternalServerError, Message = $"Error during user registration:{ex.Message}" };
+            }
+        }
+        public async Task<ServiceResponse<User>> Login([FromBody] LoginRequest request)
+        {
+            try
+            {
+                var user = _userManagementDbContext.Users.FirstOrDefault(x => x.Email == request.Email && x.IsActive);
+                if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+                {
+                    var returnBadRequest = new ServiceResponse<User>
+                    {
+                        Message = "Invalid credentials",
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Success = false,
+                    };
+                    return returnBadRequest;
+                }
+                user.LastLoginAt = DateTime.UtcNow;
+
+                if (!string.IsNullOrEmpty(request.FcmToken))
+                    user.FcmToken = request.FcmToken;
+                if (!string.IsNullOrEmpty(request.ApnsToken))
+                    user.ApnsToken = request.ApnsToken;
+
+                await _userManagementDbContext.SaveChangesAsync();
+
+                var token = GenerateJwtToken(user);
+                var successReturn = new ServiceResponse<User>
+                {
+                    Success = true,
+                    Message = token,
+                    Data = new User
+                    {
+                        Id = user.Id,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        Role = user.Role,
+                    }
+                };
+                return successReturn;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during login");
+                return new ServiceResponse<User> { Success = false, StatusCode = HttpStatusCode.InternalServerError, Message = $"Login failed:{ex.Message}" };
+            }
+        }
+        public Task<IActionResult> UpdateLocation([FromBody] LocationUpdateRequest request)
+        {
+            try
+            {
+                var userId =
+            }
+            catch (Exception)
+            {
+
+                throw;
             }
         }
 
@@ -89,24 +147,28 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             throw new NotImplementedException();
         }
 
-        public Task<IActionResult> Login([FromBody] LoginRequest request)
-        {
-            throw new NotImplementedException();
-        }
 
         public Task<IActionResult> ToggleTracking([FromBody] TrackingRequest request)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IActionResult> UpdateLocation([FromBody] LocationUpdateRequest request)
-        {
-            throw new NotImplementedException();
-        }
 
         public Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             throw new NotImplementedException();
         }
+
+        private string GenerateJwtToken(User user)
+        {
+            // TODO: JWT implementation
+            return $"jwt_token_for_{user.Id}";
+        }
+        private Guid GetCurrentUserId()
+        {
+            var userIdClaim = _userManagementDbContext.Users.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+        }
+
     }
 }
