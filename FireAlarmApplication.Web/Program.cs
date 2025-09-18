@@ -1,6 +1,5 @@
 ﻿using FireAlarmApplication.Web.Modules.AlertSystem.Data;
 using FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations;
-using FireAlarmApplication.Web.Modules.FireDetection.Data;
 using FireAlarmApplication.Web.Modules.FireDetection.Modules;
 using FireAlarmApplication.Web.Shared.Common;
 using FireAlarmApplication.Web.Shared.Infrastructure;
@@ -18,20 +17,19 @@ builder.Services.AddServerSideBlazor();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // FireDetectionDbContext
-builder.Services.AddDbContext<FireDetectionDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsql =>
-    {
-        npgsql.UseNetTopologySuite();
-        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "fire_detection");
-    }));
+//builder.Services.AddDbContext<FireDetectionDbContext>(options =>
+//    options.UseNpgsql(connectionString, npgsql =>
+//    {
+//        npgsql.UseNetTopologySuite();
+//        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "fire_detection");
+//    }));
 
 // AlertSystemDbContext
-builder.Services.AddDbContext<AlertSystemDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsql =>
-    {
-        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "alert_system");
-    }));
-
+//builder.Services.AddDbContext<AlertSystemDbContext>(options =>
+//    options.UseNpgsql(connectionString, npgsql =>
+//    {
+//        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "alert_system");
+//    }));
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
@@ -49,19 +47,17 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
     try
     {
         database.StringSet("startup_test", DateTime.UtcNow.ToString(), TimeSpan.FromSeconds(10));
-        logger.LogInformation("? Redis connection successful");
+        logger.LogInformation("Redis connection successful");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "? Redis connection failed");
+        logger.LogError(ex, "Redis connection failed");
     }
 
     return connectionMultiplexer;
 });
 
 builder.Services.AddScoped<IRedisService, RedisService>();
-
-// Hangfire Configuration 
 builder.Services.AddHangfire(configuration =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -77,8 +73,6 @@ builder.Services.AddHangfire(configuration =>
             SchemaName = "hangfire"
         });
 });
-
-// Hangfire Server
 builder.Services.AddHangfireServer(options =>
 {
     options.WorkerCount = 1;
@@ -94,14 +88,27 @@ builder.Services.AddLogging(logging =>
 var modules = new List<IFireGuardModule>
 {
     new FireDetectionModule(),
-    new AlertSystemModule()
-    //new UserManagementModule(),
+    new AlertSystemModule(),
+    new UserManagementModule()
 };
 
 builder.AddFireGuardModules(modules.ToArray());
 
 var app = builder.Build();
+using var scospe = app.Services.CreateScope();
+var services = scospe.ServiceProvider;
 
+try
+{
+    var context = services.GetRequiredService<UserManagementDbContext>();
+    var logger = services.GetRequiredService<ILogger<UserManagementModule>>();
+    await UserManagementModule.SeedTestUsersAsync(context, logger);
+}
+catch (Exception ex)
+{
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while seeding the database.");
+}
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -111,12 +118,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.MapFireGuardModules();
-app.MapRazorPages();
-app.MapBlazorHub();
 app.UseHangfireServer();
 app.MapFallbackToPage("/_Host");
 app.UseHangfireDashboard("/hangfire");
-
 
 if (app.Environment.IsDevelopment())
 {
@@ -131,12 +135,9 @@ if (app.Environment.IsDevelopment())
         app.Logger.LogError(ex, "? Module seeding failed");
     }
 }
-
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
-
-
 app.Run();

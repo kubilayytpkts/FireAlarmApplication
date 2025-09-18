@@ -43,14 +43,14 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "❌ Error sending batch notifications for fire {FireId}", notification.FireId);
+                            _logger.LogError(ex, "Error sending batch notifications for fire {FireId}", notification.FireId);
                         }
                     }, cancellationToken);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error processing FireDetectedEvent for fire {FireId}", notification.FireId);
+                _logger.LogError(ex, "Error processing FireDetectedEvent for fire {FireId}", notification.FireId);
                 throw;
             }
         }

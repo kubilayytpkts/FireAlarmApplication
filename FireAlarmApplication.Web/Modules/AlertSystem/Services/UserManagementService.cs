@@ -3,11 +3,13 @@ using FireAlarmApplication.Shared.Contracts.Models;
 using FireAlarmApplication.Web.Modules.AlertSystem.Data;
 using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Infrastructure;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using NetTopologySuite.Geometries;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
+using System.Text;
 
 namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 {
@@ -16,26 +18,39 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         private readonly UserManagementDbContext _userManagementDbContext;
         private readonly IRedisService _redisService;
         private readonly ILogger<UserManagementService> _logger;
-        public UserManagementService(UserManagementDbContext userManagementDbContext, IRedisService redisService, ILogger<UserManagementService> logger)
+        private readonly IConfiguration _configuration;
+
+        public UserManagementService(
+            UserManagementDbContext userManagementDbContext,
+            IRedisService redisService,
+            ILogger<UserManagementService> logger,
+            IConfiguration configuration)
         {
             _userManagementDbContext = userManagementDbContext;
             _redisService = redisService;
             _logger = logger;
+            _configuration = configuration;
         }
-        public async Task<ServiceResponse<int>> Register([FromBody] RegisterRequest request)
+
+        public async Task<ServiceResponse<int>> Register(RegisterRequest request)
         {
             try
             {
-                //email kontrolü
-                var existingUser = await _userManagementDbContext.Users.AnyAsync(x => x.Email == request.Email);
+                // Email kontrolü
+                var existingUser = await _userManagementDbContext.Users
+                    .AnyAsync(x => x.Email == request.Email);
+
                 if (existingUser)
+                {
                     return new ServiceResponse<int>
                     {
                         Message = "Email already registered",
                         StatusCode = HttpStatusCode.BadRequest,
                         Success = false,
                     };
-                // yeni kullanıcı oluşturma
+                }
+
+                // Yeni kullanıcı oluştur
                 var user = new User
                 {
                     Id = Guid.NewGuid(),
@@ -44,7 +59,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                     LastName = request.LastName,
                     PhoneNumber = request.PhoneNumber,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    Role = UserRole.Civilian,// Default role
+                    Role = UserRole.Civilian,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     IsActive = true,
@@ -57,45 +72,59 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 // İlk konum bilgisi varsa ekle
                 if (request.InitialLocation != null)
                 {
-                    user.CurrentLocation = new Point(request.InitialLocation.Longitude, request.InitialLocation.Latitude) { SRID = 4326 };
+                    user.CurrentLocation = new Point(
+                        request.InitialLocation.Longitude,
+                        request.InitialLocation.Latitude)
+                    { SRID = 4326 };
                     user.LastLocationUpdate = DateTime.UtcNow;
                 }
-                _userManagementDbContext.Add(user);
+
+                _userManagementDbContext.Users.Add(user);
                 await _userManagementDbContext.SaveChangesAsync();
 
                 _logger.LogInformation("New user registered: {Email}", user.Email);
 
                 return new ServiceResponse<int>
                 {
-                    Message = "Registiration Successful",
+                    Message = "Registration Successful",
                     StatusCode = HttpStatusCode.OK,
                     Success = true,
+                    Data = 1
                 };
-
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during user registration");
-                return new ServiceResponse<int> { Success = false, StatusCode = HttpStatusCode.InternalServerError, Message = $"Error during user registration:{ex.Message}" };
+                return new ServiceResponse<int>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Error during user registration: {ex.Message}"
+                };
             }
         }
-        public async Task<ServiceResponse<User>> Login([FromBody] LoginRequest request)
+
+        public async Task<ServiceResponse<LoginResponse>> Login(LoginRequest request)
         {
             try
             {
-                var user = _userManagementDbContext.Users.FirstOrDefault(x => x.Email == request.Email && x.IsActive);
+                var user = await _userManagementDbContext.Users
+                    .FirstOrDefaultAsync(x => x.Email == request.Email && x.IsActive);
+
                 if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 {
-                    var returnBadRequest = new ServiceResponse<User>
+                    return new ServiceResponse<LoginResponse>
                     {
                         Message = "Invalid credentials",
                         StatusCode = HttpStatusCode.Unauthorized,
                         Success = false,
                     };
-                    return returnBadRequest;
                 }
+
+                // Son giriş zamanını güncelle
                 user.LastLoginAt = DateTime.UtcNow;
 
+                // Push token'ları güncelle
                 if (!string.IsNullOrEmpty(request.FcmToken))
                     user.FcmToken = request.FcmToken;
                 if (!string.IsNullOrEmpty(request.ApnsToken))
@@ -103,72 +132,446 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
                 await _userManagementDbContext.SaveChangesAsync();
 
+                // JWT token oluştur
                 var token = GenerateJwtToken(user);
-                var successReturn = new ServiceResponse<User>
+
+                return new ServiceResponse<LoginResponse>
                 {
                     Success = true,
-                    Message = token,
-                    Data = new User
+                    StatusCode = HttpStatusCode.OK,
+                    Data = new LoginResponse
                     {
-                        Id = user.Id,
-                        FirstName = user.FirstName,
-                        LastName = user.LastName,
-                        Role = user.Role,
+                        Token = token,
+                        UserId = user.Id,
+                        Email = user.Email,
+                        FullName = user.FullName,
+                        Role = user.Role.ToString()
                     }
                 };
-                return successReturn;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during login");
-                return new ServiceResponse<User> { Success = false, StatusCode = HttpStatusCode.InternalServerError, Message = $"Login failed:{ex.Message}" };
+                return new ServiceResponse<LoginResponse>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Login failed: {ex.Message}"
+                };
             }
         }
-        public Task<IActionResult> UpdateLocation([FromBody] LocationUpdateRequest request)
+
+        public async Task<ServiceResponse<bool>> UpdateProfile(Guid userId, UpdateProfileRequest request)
         {
             try
             {
-                var userId =
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                // Profil bilgilerini güncelle
+                if (!string.IsNullOrEmpty(request.FirstName))
+                    user.FirstName = request.FirstName;
+                if (!string.IsNullOrEmpty(request.LastName))
+                    user.LastName = request.LastName;
+                if (!string.IsNullOrEmpty(request.PhoneNumber))
+                    user.PhoneNumber = request.PhoneNumber;
+
+                // Bildirim tercihlerini güncelle
+                user.EnableEmailNotification = request.EnableEmail;
+                user.EnableSmsNotification = request.EnableSms;
+                user.EnablePushNotification = request.EnablePush;
+
+                await _userManagementDbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Profile updated for user: {UserId}", userId);
+
+                return new ServiceResponse<bool>
+                {
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Message = "Profile updated successfully",
+                    Data = true
+                };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                _logger.LogError(ex, "Error updating profile for user: {UserId}", userId);
+                return new ServiceResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Error updating profile: {ex.Message}"
+                };
             }
         }
 
-        public Task<IActionResult> BatchLocationUpdate([FromBody] List<LocationUpdateRequest> locations)
+        public async Task<ServiceResponse<bool>> UpdateLocation(Guid userId, LocationUpdateRequest request)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                // Türkiye sınırları kontrolü
+                if (!IsValidTurkeyLocation(request.Latitude, request.longitude))
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.BadRequest,
+                        Message = "Location outside Turkey boundaries"
+                    };
+                }
+
+                var newLocation = new Point(request.longitude, request.Latitude) { SRID = 4326 };
+
+                // Önceki konumla mesafe kontrolü
+                if (user.CurrentLocation != null)
+                {
+                    var distance = CalculateDistance(
+                        user.CurrentLocation.Y, user.CurrentLocation.X,
+                        request.Latitude, request.longitude);
+
+                    // 50 metreden az hareket varsa güncelleme yapma
+                    if (distance < 0.05)
+                    {
+                        return new ServiceResponse<bool>
+                        {
+                            Success = true,
+                            StatusCode = HttpStatusCode.OK,
+                            Message = "Location unchanged (movement < 50m)",
+                            Data = true
+                        };
+                    }
+                }
+
+                // Konum güncelle
+                user.CurrentLocation = newLocation;
+                user.LastLocationUpdate = DateTime.UtcNow;
+                user.LocationAccuracy = request.Accuracy;
+
+                // Ev konumu yoksa ve kullanıcı durağansa ev konumu olarak kaydet
+                if (user.HomeLocation == null && request.Speed < 0.5)
+                {
+                    user.HomeLocation = newLocation;
+                    _logger.LogInformation("Home location auto-set for user {UserId}", userId);
+                }
+
+                await _userManagementDbContext.SaveChangesAsync();
+
+                // Redis'e cache'le
+                await CacheUserLocation(user);
+
+                _logger.LogInformation("Location updated for user {UserId}: ({Lat}, {Lng})",
+                    userId, request.Latitude, request.longitude);
+
+                return new ServiceResponse<bool>
+                {
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Message = "Location updated successfully",
+                    Data = true
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating location for user: {UserId}", userId);
+                return new ServiceResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Error updating location: {ex.Message}"
+                };
+            }
         }
 
-        public Task<IActionResult> GetLocation()
+        public async Task<ServiceResponse<int>> BatchLocationUpdate(Guid userId, List<LocationUpdateRequest> locations)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new ServiceResponse<int>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                // En son konumu al (zaman damgasına göre)
+                var latestLocation = locations
+                    .Where(l => IsValidTurkeyLocation(l.Latitude, l.longitude))
+                    .OrderByDescending(l => l.TimeStamp)
+                    .FirstOrDefault();
+
+                if (latestLocation != null)
+                {
+                    user.CurrentLocation = new Point(latestLocation.longitude, latestLocation.Latitude) { SRID = 4326 };
+                    user.LastLocationUpdate = latestLocation.TimeStamp ?? DateTime.UtcNow;
+                    user.LocationAccuracy = latestLocation.Accuracy;
+
+                    await _userManagementDbContext.SaveChangesAsync();
+                    await CacheUserLocation(user);
+                }
+
+                return new ServiceResponse<int>
+                {
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Message = "Batch update completed",
+                    Data = locations.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in batch location update for user: {UserId}", userId);
+                return new ServiceResponse<int>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Batch update failed: {ex.Message}"
+                };
+            }
         }
 
-
-        public Task<IActionResult> ToggleTracking([FromBody] TrackingRequest request)
+        public async Task<ServiceResponse<LocationResponse>> GetLocation(Guid userId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new ServiceResponse<LocationResponse>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                return new ServiceResponse<LocationResponse>
+                {
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Data = new LocationResponse
+                    {
+                        //HasLocation = user.HasValidLocation,
+                        CurrentLatitude = user.CurrentLocation?.Y,
+                        CurrentLongitude = user.CurrentLocation?.X,
+                        HomeLatitude = user.HomeLocation?.Y,
+                        HomeLongitude = user.HomeLocation?.X,
+                        LocationAccuracy = user.LocationAccuracy,
+                        LastLocationUpdate = user.LastLocationUpdate,
+                        TrackingEnabled = user.IsLocationTrackingEnabled
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting location for user: {UserId}", userId);
+                return new ServiceResponse<LocationResponse>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Failed to get location: {ex.Message}"
+                };
+            }
         }
 
-
-        public Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        public async Task<ServiceResponse<bool>> ToggleTracking(Guid userId, TrackingRequest request)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                user.IsLocationTrackingEnabled = request.Enable;
+                await _userManagementDbContext.SaveChangesAsync();
+
+                // Cache'den temizle
+                if (!request.Enable)
+                {
+                    await _redisService.RemoveAsync($"user_location:{userId}");
+                }
+
+                _logger.LogInformation("Location tracking {Status} for user {UserId}",
+                    request.Enable ? "enabled" : "disabled", userId);
+
+                return new ServiceResponse<bool>
+                {
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Message = $"Location tracking {(request.Enable ? "enabled" : "disabled")}",
+                    Data = request.Enable
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error toggling tracking for user: {UserId}", userId);
+                return new ServiceResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"Failed to toggle tracking: {ex.Message}"
+                };
+            }
         }
+
+        public async Task<User?> GetUserByIdAsync(Guid userId)
+        {
+            return await _userManagementDbContext.Users.FindAsync(userId);
+        }
+
+        public async Task<List<User>> FindUsersInRadiusAsync(double lat, double lng, double radiusKm)
+        {
+            try
+            {
+                var point = new Point(lng, lat) { SRID = 4326 };
+                var radiusMeters = radiusKm * 1000;
+
+                // PostGIS ST_DWithin kullanarak spatial query
+                var users = await _userManagementDbContext.Users
+                    .Where(u => u.IsActive)
+                    .Where(u => u.IsLocationTrackingEnabled)
+                    .Where(u =>
+                        (u.CurrentLocation != null && u.CurrentLocation.IsWithinDistance(point, radiusMeters)) ||
+                        (u.HomeLocation != null && u.HomeLocation.IsWithinDistance(point, radiusMeters)))
+                    .ToListAsync();
+
+                _logger.LogInformation("Found {Count} users within {Radius}km of ({Lat}, {Lng})",
+                    users.Count, radiusKm, lat, lng);
+
+                return users;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finding users in radius");
+                return new List<User>();
+            }
+        }
+
+        #region Helper Methods
 
         private string GenerateJwtToken(User user)
         {
-            // TODO: JWT implementation
-            return $"jwt_token_for_{user.Id}";
-        }
-        private Guid GetCurrentUserId()
-        {
-            var userIdClaim = _userManagementDbContext.Users.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "your-256-bit-secret-key-here");
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim("userId", user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.FullName),
+                    new Claim(ClaimTypes.Role, user.Role.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
 
+        private bool IsValidTurkeyLocation(double latitude, double longitude)
+        {
+            return latitude >= 36 && latitude <= 42 &&
+                   longitude >= 26 && longitude <= 45;
+        }
+
+        private double CalculateDistance(double lat1, double lng1, double lat2, double lng2)
+        {
+            const double R = 6371;
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLng = (lng2 - lng1) * Math.PI / 180;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
+                    Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
+
+        private async Task CacheUserLocation(User user)
+        {
+            //if (user.HasValidLocation)
+            //{
+            var locationInfo = new UserLocationInfo
+            {
+                UserId = user.Id,
+                Latitude = user.Latitude ?? 0,
+                Longitude = user.Longitude ?? 0,
+                UserRole = user.Role,
+                LastUpdated = user.LastLocationUpdate ?? DateTime.UtcNow,
+                IsActive = user.IsActive
+            };
+
+            await _redisService.SetAsync(
+                $"user_location:{user.Id}",
+                locationInfo,
+                TimeSpan.FromMinutes(30));
+            //}
+        }
+
+        #endregion
+    }
+
+    // Response Models
+    public class ServiceResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public T? Data { get; set; }
+        public HttpStatusCode StatusCode { get; set; }
+    }
+
+    public class LoginResponse
+    {
+        public string Token { get; set; } = string.Empty;
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+
+    public class LocationResponse
+    {
+        public bool HasLocation { get; set; }
+        public double? CurrentLatitude { get; set; }
+        public double? CurrentLongitude { get; set; }
+        public double? HomeLatitude { get; set; }
+        public double? HomeLongitude { get; set; }
+        public double LocationAccuracy { get; set; }
+        public DateTime? LastLocationUpdate { get; set; }
+        public bool TrackingEnabled { get; set; }
     }
 }

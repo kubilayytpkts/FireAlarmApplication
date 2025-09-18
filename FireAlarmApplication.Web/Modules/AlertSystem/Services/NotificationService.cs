@@ -73,12 +73,12 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             try
             {
                 // TODO: Database update
-                _logger.LogInformation("✅ UserAlert {Id} marked as delivered", userAlertId);
+                _logger.LogInformation("UserAlert {Id} marked as delivered", userAlertId);
                 return await Task.FromResult(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to mark UserAlert {Id} as delivered", userAlertId);
+                _logger.LogError(ex, "Failed to mark UserAlert {Id} as delivered", userAlertId);
                 return false;
             }
         }

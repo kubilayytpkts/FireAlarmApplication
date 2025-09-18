@@ -3,6 +3,7 @@ using System;
 using FireAlarmApplication.Web.Modules.AlertSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FireAlarmApplication.Web.Migrations
 {
     [DbContext(typeof(UserManagementDbContext))]
-    partial class UserManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250914115739_updates_14.09.2025")]
+    partial class updates14092025
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -99,6 +102,7 @@ namespace FireAlarmApplication.Web.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
