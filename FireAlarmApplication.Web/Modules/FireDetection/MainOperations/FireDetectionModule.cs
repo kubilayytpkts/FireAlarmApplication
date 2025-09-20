@@ -27,8 +27,6 @@ public class FireDetectionModule : IFireGuardModule
             });
         });
 
-
-
         services.AddScoped<IFireDetectionService, FireDetectionService>();
         services.AddScoped<INasaFirmsService, NasaFirmsService>();
         services.AddScoped<IFireDataSyncService, FireDataSyncService>();
@@ -50,22 +48,25 @@ public class FireDetectionModule : IFireGuardModule
 
     public void ConfigureEndpoints(IEndpointRouteBuilder endpoints)
     {
-        // 🔌 Fire Detection API Endpoints
+        //Fire Detection API Endpoints
         var fireGroup = endpoints.MapGroup("/api/fires").WithTags("Fire Detection").WithOpenApi();
 
-        // GET /api/fires - Aktif yangınlar
+        // GET/api/fires
+        // Aktif yangınlar
         fireGroup.MapGet("/", GetActiveFiresAsync)
                 .WithName("GetActiveFires")
                 .WithSummary("Get active fires in Turkey")
                 .Produces<List<Models.FireDto>>();
 
-        // GET /api/fires/near/{lat}/{lng} - Yakındaki yangınlar
+        // GET/api/fires/near/{lat}/{lng}
+        // Yakındaki yangınlar
         fireGroup.MapGet("/near/{lat:double}/{lng:double}", GetNearbyFiresAsync)
                 .WithName("GetNearbyFires")
                 .WithSummary("Get fires near specified location")
                 .Produces<List<Models.FireDto>>();
 
-        // GET /api/fires/stats - Yangın istatistikleri
+        // GET/api/fires/stats
+        // Yangın istatistikleri
         fireGroup.MapGet("/stats", GetFireStatsAsync)
                 .WithName("GetFireStats")
                 .WithSummary("Get fire statistics")
@@ -101,7 +102,7 @@ public class FireDetectionModule : IFireGuardModule
         }
     }
 
-    // 🔌 API Endpoint Handlers
+    //API Endpoint Handlers
     private static async Task<IResult> GetActiveFiresAsync(IFireDetectionService fireService)
     {
         var fires = await fireService.GetActiveFiresAsync();

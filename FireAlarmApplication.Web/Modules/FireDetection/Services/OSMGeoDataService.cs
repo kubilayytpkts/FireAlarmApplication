@@ -1,11 +1,14 @@
 ﻿using FireAlarmApplication.Shared.Contracts.Models;
 using FireAlarmApplication.Web.Shared.Infrastructure;
+using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
 using System.Globalization;
 
 namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 {
     public class OSMGeoDataService : IOsmGeoDataService
     {
+        private readonly Geometry _turkeyBorder;
         private readonly HttpClient _httpClient;
         private readonly IRedisService _redisService;
         private readonly ILogger<OSMGeoDataService> _logger;
@@ -19,9 +22,12 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _httpClient = httpClient;
             _redisService = redisService;
             _logger = logger;
-
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "FireGuard-Turkey/1.0");
+
+            var geoJsonText = File.ReadAllText("FireAlarmApplication.Web\\wwwroot\\TurkeyPolygonJson\\lvl0-TR.geojson");
+            var reader = new GeoJsonReader();
+            _turkeyBorder = reader.Read<Geometry>(geoJsonText);
         }
 
         public async Task<OSMAreaInfo> GetAreaInfoAsync(double lat, double lng)
@@ -221,7 +227,15 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
         }
 
-        // 🆕 EKLEME: Eksik metodlar
+        public async Task<bool> IsUserInTurkey(double latitude, double longitude)
+        {
+            var userPoint = new Point(latitude, longitude) { SRID = 4326 };
+            bool inside = _turkeyBorder.Contains(userPoint);
+
+            return inside;
+        }
+
+        // EKLEME: Eksik metodlar
         public async Task<bool> IsServiceHealthyAsync()
         {
             try

@@ -18,7 +18,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<UserManagementDbContext>(options =>
+            services.AddDbContextFactory<UserManagementDbContext>(options =>
             {
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
 

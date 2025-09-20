@@ -66,7 +66,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error calculating OSM risk for fire {FireId}", fire.Id);
+                _logger.LogError(ex, "Error calculating OSM risk for fire {FireId}", fire.Id);
 
                 return 0;
             }
@@ -160,7 +160,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error calculating settlement proximity for ({Lat}, {Lng})", lat, lng);
+                _logger.LogError(ex, "Error calculating settlement proximity for ({Lat}, {Lng})", lat, lng);
                 return 50; // Hata durumunda orta risk
             }
         }
