@@ -1,12 +1,15 @@
-﻿using FireAlarmApplication.Web.Modules.AlertSystem.Data;
-using FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations;
+﻿using FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations;
 using FireAlarmApplication.Web.Modules.FireDetection.Modules;
 using FireAlarmApplication.Web.Shared.Common;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using StackExchange.Redis;
+
+NpgsqlConnection.GlobalTypeMapper.UseNetTopologySuite();
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,17 +17,16 @@ builder.Services.Configure<FireGuardOptions>(builder.Configuration.GetSection(Fi
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//var fireDetectionDB = builder.Configuration.GetConnectionString("FireDetectionDB");
 
-// FireDetectionDbContext
 //builder.Services.AddDbContext<FireDetectionDbContext>(options =>
-//    options.UseNpgsql(connectionString, npgsql =>
+//    options.UseNpgsql(fireDetectionDB, npgsql =>
 //    {
 //        npgsql.UseNetTopologySuite();
 //        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "fire_detection");
 //    }));
 
-// AlertSystemDbContext
 //builder.Services.AddDbContext<AlertSystemDbContext>(options =>
 //    options.UseNpgsql(connectionString, npgsql =>
 //    {
@@ -98,17 +100,6 @@ var app = builder.Build();
 using var scospe = app.Services.CreateScope();
 var services = scospe.ServiceProvider;
 
-try
-{
-    var context = services.GetRequiredService<UserManagementDbContext>();
-    var logger = services.GetRequiredService<ILogger<UserManagementModule>>();
-    await UserManagementModule.SeedTestUsersAsync(context, logger);
-}
-catch (Exception ex)
-{
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occurred while seeding the database.");
-}
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");

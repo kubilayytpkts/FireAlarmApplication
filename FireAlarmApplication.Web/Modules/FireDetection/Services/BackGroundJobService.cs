@@ -32,11 +32,11 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     "*/15****"
                     );
 
-                _logger.LogInformation("🕐 NASA sync job scheduled (every 15 minutes)");
+                _logger.LogInformation("NASA sync job scheduled (every 15 minutes)");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error scheduling NASA sync job");
+                _logger.LogError(ex, "Error scheduling NASA sync job");
             }
         }
         /// <summary>
@@ -46,19 +46,19 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
-                var delay = TimeSpan.FromMinutes(2);
+                var delay = TimeSpan.FromMinutes(1);
 
 
                 var jobId = _backgroundJobClient.Schedule<IFireDataSyncService>(
                       service => service.SyncFiresFromNasaAsync(),
                       delay);
 
-                _logger.LogInformation("🚀 Manual NASA sync job triggered: {JobId}", jobId);
+                _logger.LogInformation("Manual NASA sync job triggered: {JobId}", jobId);
                 return jobId;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error triggering manual sync");
+                _logger.LogError(ex, "Error triggering manual sync");
                 return "Error: " + ex.Message;
             }
         }

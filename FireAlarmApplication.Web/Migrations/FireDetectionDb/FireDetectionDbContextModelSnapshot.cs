@@ -9,7 +9,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FireAlarmApplication.Web.Migrations
+namespace FireAlarmApplication.Web.Migrations.FireDetectionDb
 {
     [DbContext(typeof(FireDetectionDbContext))]
     partial class FireDetectionDbContextModelSnapshot : ModelSnapshot
@@ -18,6 +18,7 @@ namespace FireAlarmApplication.Web.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("fire_detection")
                 .HasAnnotation("ProductVersion", "7.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 

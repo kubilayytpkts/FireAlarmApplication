@@ -4,10 +4,10 @@ using NetTopologySuite.Geometries;
 
 #nullable disable
 
-namespace FireAlarmApplication.Web.Migrations
+namespace FireAlarmApplication.Web.UserManagement
 {
     /// <inheritdoc />
-    public partial class usertable : Migration
+    public partial class update202509222221 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

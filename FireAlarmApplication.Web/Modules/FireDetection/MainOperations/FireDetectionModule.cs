@@ -145,23 +145,26 @@ public class FireDetectionModule : IFireGuardModule
         context.FireDetections.Add(testFire);
         await context.SaveChangesAsync();
 
-        logger.LogInformation("🌱 Test fire data seeded: {FireId} near Ankara", testFire.Id);
+        logger.LogInformation("Test fire data seeded: {FireId} near Ankara", testFire.Id);
     }
 
-    private static async Task<IResult> TriggerManualSyncAsync(IBackGroundJobService backGroundJobService)
+    private static async Task<IResult> TriggerManualSyncAsync(IFireDataSyncService fireDetectionService)
     {
         try
         {
-            var jobId = backGroundJobService.TriggerManualSyncAsync();
+            //var jobId = backGroundJobService.TriggerManualSyncAsync();
 
-            return Results.Ok(new
-            {
-                Success = true,
-                Message = "Manual sync triggered successfully",
-                JobId = jobId,
-                Timestamp = DateTime.UtcNow
-            });
+            //return Results.Ok(new
+            //{
+            //    Success = true,
+            //    Message = "Manual sync triggered successfully",
+            //    JobId = jobId,
+            //    Timestamp = DateTime.UtcNow
+            //});
 
+            var result = await fireDetectionService.SyncFiresFromNasaAsync();
+
+            return Results.Ok();
         }
         catch (Exception ex)
         {

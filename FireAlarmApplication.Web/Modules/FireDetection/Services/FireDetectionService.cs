@@ -160,6 +160,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
+                var connection = _context.Database.GetDbConnection();
                 _context.FireDetections.Add(fireDetection);
                 await _context.SaveChangesAsync();
 

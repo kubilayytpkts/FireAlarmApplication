@@ -4,6 +4,7 @@ using FireAlarmApplication.Web.Modules.AlertSystem.Data;
 using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Text.Json;
 
 namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
@@ -250,10 +251,10 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
                 // Nominatim API çağrısı
                 var url = $"https://nominatim.openstreetmap.org/reverse?" +
-                                       $"lat={latitude}&lon={longitude}" +
-                                       $"&format=json&zoom=16" +
-                                       $"&addressdetails=1&namedetails=1&extratags=1" +
-                                       $"&accept-language=tr";
+            $"lat={latitude.ToString(CultureInfo.InvariantCulture)}" +
+            $"&lon={longitude.ToString(CultureInfo.InvariantCulture)}" +
+            $"&format=json&zoom=16&addressdetails=1&accept-language=tr";
+
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("User-Agent", "FireGuard-Turkey/1.0");

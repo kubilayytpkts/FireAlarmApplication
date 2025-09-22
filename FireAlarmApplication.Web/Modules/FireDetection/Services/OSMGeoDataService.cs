@@ -25,7 +25,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "FireGuard-Turkey/1.0");
 
-            var geoJsonText = File.ReadAllText("FireAlarmApplication.Web\\wwwroot\\TurkeyPolygonJson\\lvl0-TR.geojson");
+            var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "lvl0-TR.geojson");
+            var geoJsonText = File.ReadAllText(geoJsonPath);
             var reader = new GeoJsonReader();
             _turkeyBorder = reader.Read<Geometry>(geoJsonText);
         }

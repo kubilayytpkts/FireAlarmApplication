@@ -50,19 +50,19 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 foreach (var nasaFire in nasaFires)
                 {
-                    var isDuplicate = await IsFireAlreadyExistsAsync(
-                    nasaFire.Latitude,
-                    nasaFire.Longitude,
-                    nasaFire.DetectedAt,
-                    nasaFire.Satellite
-                     );
+                    //var isDuplicate = await IsFireAlreadyExistsAsync(
+                    //nasaFire.Latitude,
+                    //nasaFire.Longitude,
+                    //nasaFire.DetectedAt,
+                    //nasaFire.Satellite
+                    // );
 
-                    if (isDuplicate)
-                    {
-                        duplicateCount++;
-                        _logger.LogDebug("Duplicate fire skipped: ({Lat}, {Lng}) from {Satellite}", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Satellite);
-                        continue;
-                    }
+                    //if (isDuplicate)
+                    //{
+                    //    duplicateCount++;
+                    //    _logger.LogDebug("Duplicate fire skipped: ({Lat}, {Lng}) from {Satellite}", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Satellite);
+                    //    continue;
+                    //}
                     await _fireDecetionService.CreateFireDetectionAsync(nasaFire);
                     newFiresCount++;
 
@@ -94,7 +94,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             try
             {
                 var point = new Point(longitude, latitude) { SRID = 4326 };
-                var proximityMeters = 100; // 1km tolerance
+                var proximityMeters = 50; // 1km tolerance
                 var timeToleranceHours = 6; // 6 saat tolerance
 
                 var startTime = detectedAt.AddHours(-timeToleranceHours);

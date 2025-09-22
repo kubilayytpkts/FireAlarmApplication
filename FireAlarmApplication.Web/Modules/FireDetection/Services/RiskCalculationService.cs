@@ -37,17 +37,17 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var confidenceScore = (fire.Confidence / 100.0) * _riskWeights["confidence_score"] * 100;
                 totalRisk += confidenceScore;
 
-                //Fire Insensity FRP (0 - 20 puan) 
-                var intensityScore = CalculateIntensityScore(fire.FireRadiativePower ?? 0) * _riskWeights["fire_intensity"];
-                totalRisk += intensityScore;
+                ////Fire Insensity FRP (0 - 20 puan) 
+                //var intensityScore = CalculateIntensityScore(fire.FireRadiativePower ?? 0) * _riskWeights["fire_intensity"];
+                //totalRisk += intensityScore;
 
-                //OSM Forest Proximinty (0 - 15 puan)
-                var forestScore = await CalculateForestProximintyScore(fire.Latitude, fire.Longitude);
-                totalRisk += forestScore;
+                ////OSM Forest Proximinty (0 - 15 puan)
+                //var forestScore = await CalculateForestProximintyScore(fire.Latitude, fire.Longitude);
+                //totalRisk += forestScore;
 
-                //0SM Settlement Proximinty (0 - 15 puan)
-                var settlementScore = await CalculateSettlementProximityScore(fire.Latitude, fire.Longitude);
-                totalRisk += settlementScore;
+                ////0SM Settlement Proximinty (0 - 15 puan)
+                //var settlementScore = await CalculateSettlementProximityScore(fire.Latitude, fire.Longitude);
+                //totalRisk += settlementScore;
 
                 // 5. Temporal Clustering (şimdilik basit) Zaman içinde yangın yoğunluğu
                 var temporalScore = 50; // TODO: Implement

@@ -62,7 +62,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error fetching active fires from NASA FIRMS");
+                _logger.LogError(ex, "Error fetching active fires from NASA FIRMS");
 
                 throw;
             }
@@ -98,13 +98,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 var response = await _httpClient.GetAsync(endpoint);
                 var isHealthy = response.IsSuccessStatusCode;
-                _logger.LogDebug("🏥 NASA FIRMS API health: {Status}", isHealthy ? "Healthy" : "Unhealthy");
+                _logger.LogDebug("NASA FIRMS API health: {Status}", isHealthy ? "Healthy" : "Unhealthy");
 
                 return isHealthy;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ NASA FIRMS API health check failed");
+                _logger.LogError(ex, "NASA FIRMS API health check failed");
                 throw;
             }
         }
@@ -121,7 +121,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 if (lines.Length <= 1)
                 {
-                    _logger.LogWarning("⚠️ No data lines in CSV response");
+                    _logger.LogWarning("No data lines in CSV response");
                     return fires;
                 }
 

@@ -10,11 +10,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FireAlarmApplication.Web.Migrations
+namespace FireAlarmApplication.Web.UserManagement
 {
     [DbContext(typeof(UserManagementDbContext))]
-    [Migration("20250912183322_user_table")]
-    partial class usertable
+    [Migration("20250922192316_update_202509222221")]
+    partial class update202509222221
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

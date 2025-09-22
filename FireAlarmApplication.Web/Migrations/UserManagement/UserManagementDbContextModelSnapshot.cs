@@ -9,7 +9,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FireAlarmApplication.Web.Migrations
+namespace FireAlarmApplication.Web.UserManagement
 {
     [DbContext(typeof(UserManagementDbContext))]
     partial class UserManagementDbContextModelSnapshot : ModelSnapshot

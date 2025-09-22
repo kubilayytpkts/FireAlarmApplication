@@ -40,7 +40,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Data
                 entity.HasIndex(e => e.RiskScore)
                       .HasDatabaseName("ix_fire_detections_risk_score");
 
-                // 🏷️ Column Configurations
+                // Column Configurations
                 entity.Property(e => e.Id)
                       .HasDefaultValueSql("gen_random_uuid()");
 
