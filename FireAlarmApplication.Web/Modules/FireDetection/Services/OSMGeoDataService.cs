@@ -1,5 +1,6 @@
 ﻿using FireAlarmApplication.Shared.Contracts.Models;
 using FireAlarmApplication.Web.Shared.Infrastructure;
+using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
 using System.Globalization;
@@ -27,8 +28,15 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
             var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "lvl0-TR.geojson");
             var geoJsonText = File.ReadAllText(geoJsonPath);
+
             var reader = new GeoJsonReader();
-            _turkeyBorder = reader.Read<Geometry>(geoJsonText);
+            var featureCollection = reader.Read<FeatureCollection>(geoJsonText);
+            _turkeyBorder = featureCollection?[0]?.Geometry;
+
+            if (_turkeyBorder == null)
+            {
+                throw new InvalidOperationException("Türkiye sınır verisi yüklenemedi!");
+            }
         }
 
         public async Task<OSMAreaInfo> GetAreaInfoAsync(double lat, double lng)
@@ -230,7 +238,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
         public async Task<bool> IsUserInTurkey(double latitude, double longitude)
         {
-            var userPoint = new Point(latitude, longitude) { SRID = 4326 };
+            var userPoint = new Point(longitude, latitude) { SRID = 4326 };
             bool inside = _turkeyBorder.Contains(userPoint);
 
             return inside;

@@ -3,32 +3,31 @@ using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
 using System.Globalization;
 
 namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 {
     public class NasaFirmsService : INasaFirmsService
     {
+        private readonly Geometry _turkeyBorder;
         private readonly HttpClient _httpClient;
         private readonly FireGuardOptions _fireGuardOptions;
         private readonly ILogger<NasaFirmsService> _logger;
         private readonly IRiskCalculationService _riskCalculationService;
-
-        List<(double lat, double lng)> turkeyPolygon = new()
-        {
-            (36.0, 26.0),
-            (36.0, 45.0),
-            (42.1, 45.0),
-            (42.1, 26.0)
-        };
-
-
-        public NasaFirmsService(HttpClient httpClient, IOptions<FireGuardOptions> fireGuardOptions, ILogger<NasaFirmsService> logger, IRiskCalculationService riskCalculationService)
+        private readonly IOsmGeoDataService _osmGeoDataService;
+        public NasaFirmsService(HttpClient httpClient, IOptions<FireGuardOptions> fireGuardOptions, ILogger<NasaFirmsService> logger, IRiskCalculationService riskCalculationService, IOsmGeoDataService osmGeoDataService)
         {
             _httpClient = httpClient;
             _fireGuardOptions = fireGuardOptions.Value;
             _logger = logger;
             _riskCalculationService = riskCalculationService;
+
+            var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "lvl0-TR.geojson");
+            var geoJsonText = File.ReadAllText(geoJsonPath);
+            var reader = new GeoJsonReader();
+            _turkeyBorder = reader.Read<Geometry>(geoJsonText);
+            _osmGeoDataService = osmGeoDataService;
         }
 
         /// <summary>
@@ -125,27 +124,19 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     return fires;
                 }
 
-
                 for (int i = 0; i < lines.Length; i++)
                 {
-                    try
-                    {
-                        var fire = await ParseCsvLine(lines[i]);
-                        if (fire != null)
-                        {
-                            fires.Add(fire);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "⚠️ Error parsing CSV line {Line}: {Content}", i, lines[i]);
-                    }
+                    var fire = await ParseCsvLine(lines[i]);
+                    if (fire != null)
+                        fires.Add(fire);
                 }
+
                 return fires;
             }
             catch (Exception ex)
             {
-                throw ex;
+                _logger.LogWarning(ex, "Error parsing CSV line {Line}: {Content}", null);
+                return new List<Models.FireDetection?>();
             }
         }
 
@@ -156,68 +147,37 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         private async Task<Models.FireDetection> ParseCsvLine(string csvLine)
         {
             var parts = csvLine.Split(',');
-
-            if (parts.Length < 14)
-            {
-                return null;
-            }
+            if (parts.Length < 14) return null;
 
             try
             {
-                // Parse coordinates
-                if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude) ||
-                    !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var longitude))
-                {
+                if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude) || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var longitude))
                     return null;
-                }
 
-                // Turkey bounds check
-                //if (latitude < 35 || latitude > 43 || longitude < 25 || longitude > 46)
-                //{
-                //    return null; // Outside Turkey
-                //}
+                if (!await _osmGeoDataService.IsUserInTurkey(latitude, longitude))
+                    return null;
 
-                if (!IsPointInPolygon(latitude, longitude, turkeyPolygon))
-                {
-                    return null; // Türkiye dışında
-                }
-
-
-                // Parse other fields
                 double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var brightness);
 
                 double confidence = 0;
-                var confidenceStr = parts[9]; // confidence column
-                if (confidenceStr == "n" || confidenceStr == "nominal")
-                {
-                    confidence = 50; // Default nominal confidence
-                }
-                else if (confidenceStr == "l" || confidenceStr == "low")
-                {
-                    confidence = 30; // Low confidence
-                }
-                else if (confidenceStr == "h" || confidenceStr == "high")
-                {
-                    confidence = 80; // High confidence
-                }
-                else
-                {
-                    double.TryParse(confidenceStr, NumberStyles.Float, CultureInfo.InvariantCulture, out confidence);
-                }
+                var confidenceStr = parts[9];
+                if (confidenceStr == "n" || confidenceStr == "nominal") confidence = 50; // Default nominal confidence
+                else if (confidenceStr == "l" || confidenceStr == "low") confidence = 30; // Low confidence
+                else if (confidenceStr == "h" || confidenceStr == "high") confidence = 80; // High confidence
+                else double.TryParse(confidenceStr, NumberStyles.Float, CultureInfo.InvariantCulture, out confidence);
+
                 double.TryParse(parts[12], NumberStyles.Float, CultureInfo.InvariantCulture, out var frp); // Fire Radiative Power
 
-                // Parse date/time
-                var dateStr = parts[5]; // YYYY-MM-DD
-                var timeStr = parts[6]; // HHMM
+                var dateStr = parts[5];
+                var timeStr = parts[6];
 
-                if (!DateTime.TryParseExact($"{dateStr} {timeStr}", "yyyy-MM-dd HHmm",
-                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var detectedAt))
+                if (!DateTime.TryParseExact($"{dateStr} {timeStr}", "yyyy-MM-dd HHmm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var detectedAt))
                 {
-                    detectedAt = DateTime.UtcNow; // Fallback
+                    detectedAt = DateTime.UtcNow;
                 }
 
                 var satellite = parts[7] ?? "VIIRS";
-                var instrument = parts[8] ?? "VIIRS"; // instrument column
+                var instrument = parts[8] ?? "VIIRS";
 
                 var fire = new Models.FireDetection
                 {
@@ -239,26 +199,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Error parsing fire data from line: {Line}", csvLine);
+                _logger.LogWarning(ex, "Error parsing fire data from line: {Line}", csvLine);
                 return null;
             }
-        }
-        bool IsPointInPolygon(double lat, double lng, List<(double lat, double lng)> polygon)
-        {
-            int n = polygon.Count;
-            bool inside = false;
-            for (int i = 0, j = n - 1; i < n; j = i++)
-            {
-                var xi = polygon[i].lng;
-                var yi = polygon[i].lat;
-                var xj = polygon[j].lng;
-                var yj = polygon[j].lat;
-
-                bool intersect = ((yi > lat) != (yj > lat)) &&
-                                 (lng < (xj - xi) * (lat - yi) / (yj - yi + 1e-10) + xi);
-                if (intersect) inside = !inside;
-            }
-            return inside;
         }
     }
 }

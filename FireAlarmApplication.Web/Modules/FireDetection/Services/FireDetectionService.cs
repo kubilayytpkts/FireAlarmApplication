@@ -2,7 +2,6 @@
 using FireAlarmApplication.Web.Modules.FireDetection.Data;
 using FireAlarmApplication.Web.Modules.FireDetection.Models;
 using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
-using FireAlarmApplication.Web.Shared.Events;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -167,17 +166,17 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 await _redis.RemoveAsync("active_fires_turkey");
                 await _redis.RemoveAsync("fire_stats_turkey");
 
-                var fireEvent = new FireDetectedEvent(
+                //var fireEvent = new FireDetectedEvent(
 
-                    fireDetection.Id,
-                    fireDetection.Latitude,
-                    fireDetection.Longitude,
-                    fireDetection.Confidence,
-                    fireDetection.RiskScore,
-                    fireDetection.Satellite,
-                    fireDetection.DetectedAt
-                );
-                await _mediator.Publish(fireEvent);
+                //    fireDetection.Id,
+                //    fireDetection.Latitude,
+                //    fireDetection.Longitude,
+                //    fireDetection.Confidence,
+                //    fireDetection.RiskScore,
+                //    fireDetection.Satellite,
+                //    fireDetection.DetectedAt
+                //);
+                //await _mediator.Publish(fireEvent);
 
                 _logger.LogInformation("New fire created: {FireId} at ({Lat}, {Lng}) from {Satellite}",
                     fireDetection.Id, fireDetection.Latitude, fireDetection.Longitude, fireDetection.Satellite);

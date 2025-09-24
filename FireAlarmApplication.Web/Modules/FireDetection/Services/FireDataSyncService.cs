@@ -112,8 +112,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error checking fire duplicate for ({Lat}, {Lng})", latitude, longitude);
-                return false; // Hata durumunda duplicate kabul etme
+                _logger.LogError(ex, "Error checking fire duplicate for ({Lat}, {Lng})", latitude, longitude);
+                return false;
             }
         }
 
@@ -128,7 +128,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error getting last sync time");
+                _logger.LogError(ex, "Error getting last sync time");
                 return null;
             }
         }
