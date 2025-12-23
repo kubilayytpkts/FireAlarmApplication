@@ -51,15 +51,22 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                     RequestedConnectionTimeout = TimeSpan.FromSeconds(30),
                 };
 
+
+
                 _connection = factory.CreateConnection("FireGuard-NotificationService");
                 _channel = _connection.CreateModel();
 
                 SetupRabbitMQTopology();
 
             }
-            catch (Exception EX)
+            catch (Exception ex)
             {
-                throw EX;
+                _channel?.Close();
+                _channel?.Dispose();
+                _connection?.Close();
+                _connection?.Dispose();
+                _logger.LogError(ex, "Failed to initialize RabbitMQ connection");
+                throw;
             }
 
         }

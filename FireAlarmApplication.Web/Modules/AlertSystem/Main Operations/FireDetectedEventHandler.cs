@@ -25,7 +25,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             {
                 _logger.LogInformation("Processing FireDetectedEvent for fire {FireId} with confidence {Confidence}%", notification.FireId, notification.Confidence);
 
-                //fire alert oluştur
+                //fire alert oluşturma
                 var fireAlert = await _alertService.CreateFireAlertAsync(notification.FireId, notification.Confidence, notification.Latitude, notification.Longitude);
 
                 //uygun kullanıcıları bul ve user alertler oluştur

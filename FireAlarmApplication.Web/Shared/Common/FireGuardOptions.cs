@@ -12,6 +12,7 @@ public class FireGuardOptions
     public CacheOptions Cache { get; set; } = new();
     public RabbitMQOptions RabbitMQ { get; set; } = new();
     public ConnectionStrings ConnectionStrings { get; set; } = new();
+    public EumetsatOptions Eumetsat { get; set; } = new();
 }
 
 /// <summary>
@@ -23,6 +24,14 @@ public class NasaFirmsOptions
     public string ApiKey { get; set; } = string.Empty;
     public string DefaultArea { get; set; } = "36,26,42,45"; // Turkey bounds
     public int DefaultDayRange { get; set; } = 1;
+}
+
+public class EumetsatOptions
+{
+    public string ConsumerKey { get; set; } = string.Empty;
+    public string ConsumerSecret { get; set; } = string.Empty;
+    public string BaseUrl { get; set; } = string.Empty;
+    public string Collection { get; set; } = string.Empty;
 }
 
 /// <summary>

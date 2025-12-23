@@ -1,0 +1,17 @@
+
+=== MTG FIRE DEBUG ===
+Time: 2025-12-23 13:43:25
+NetCDF: C:\Users\kubil\AppData\Local\Temp\ea3b43e9-1c4c-4840-8c0e-89bb9b68e760.nc
+
+=== PYTHON STDERR (Debug Output) ===
+DEBUG: Using bbox = lat[28.0, 40.0], lon[3456183535302.0, 917580466385.0]
+DEBUG: Found 272 fire detections (all confidence levels)
+DEBUG: Total detections=272, In region=0
+
+
+=== PYTHON STDOUT (JSON Output) ===
+{"metadata": {"time_start": "2025-12-23T10:20:00Z", "time_end": "2025-12-23T10:30:00Z", "satellite": "MTG-I1", "instrument": "FCI", "product": "FIR - Fire Detection", "total_detections": 272, "filtered_detections": 0, "bbox_applied": true, "bbox": {"min_lat": 28.0, "min_lon": 3456183535302.0, "max_lat": 40.0, "max_lon": 917580466385.0}}, "fires": []}
+
+
+=== EXIT CODE ===
+0

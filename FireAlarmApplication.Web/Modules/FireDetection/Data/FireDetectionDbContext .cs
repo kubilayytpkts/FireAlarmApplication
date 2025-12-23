@@ -51,6 +51,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Data
                 entity.Property(e => e.Confidence)
                       .HasPrecision(5, 2); // 999.99 format
 
+                entity.Property(e => e.Confidence)
+                      .HasPrecision(4, 3);
+
                 entity.Property(e => e.Brightness)
                       .HasPrecision(8, 2); // 999999.99 format
 
@@ -62,6 +65,10 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Data
                       .HasDefaultValue(0);
 
                 entity.Property(e => e.Satellite)
+                      .HasMaxLength(50)
+                      .IsRequired();
+
+                entity.Property(e => e.ConfidenceLevel)
                       .HasMaxLength(50)
                       .IsRequired();
 

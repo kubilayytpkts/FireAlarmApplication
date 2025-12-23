@@ -1,0 +1,37 @@
+
+=== MTG FIRE DEBUG ===
+Time: 2025-12-22 14:46:56
+NetCDF: C:\Users\kubil\AppData\Local\Temp\0c8d831d-d356-4440-838d-e3669e1abf5c.nc
+
+=== PYTHON STDERR (Debug Output) ===
+DEBUG: Turkey bbox = lat[35.8, 42.2], lon[25.7, 45]
+DEBUG: Found 120 MEDIUM+HIGH confidence fires
+\u274c Fire 1: lat=-14.7508 (\u2713=False), lon=-35.2942 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 2: lat=-14.7310 (\u2713=False), lon=-35.2897 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 3: lat=-14.7119 (\u2713=False), lon=-35.3110 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 4: lat=-14.6730 (\u2713=False), lon=-35.3278 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 5: lat=-14.6539 (\u2713=False), lon=-35.3491 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 6: lat=-14.6143 (\u2713=False), lon=-35.3402 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 7: lat=-14.2980 (\u2713=False), lon=-35.2702 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 8: lat=-14.2782 (\u2713=False), lon=-35.2659 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 9: lat=-14.2577 (\u2713=False), lon=-35.2360 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 10: lat=-14.1788 (\u2713=False), lon=-35.2189 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 11: lat=-14.1591 (\u2713=False), lon=-35.2146 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 12: lat=-14.1393 (\u2713=False), lon=-35.2104 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 13: lat=-14.0999 (\u2713=False), lon=-35.2019 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 14: lat=-14.0802 (\u2713=False), lon=-35.1976 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 15: lat=-14.0605 (\u2713=False), lon=-35.1934 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 16: lat=-14.0407 (\u2713=False), lon=-35.1892 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 17: lat=-14.0006 (\u2713=False), lon=-35.1552 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 18: lat=-13.9809 (\u2713=False), lon=-35.1511 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 19: lat=-13.9612 (\u2713=False), lon=-35.1469 (\u2713=False) \u2192 NOT TURKEY
+\u274c Fire 20: lat=-13.4650 (\u2713=False), lon=-34.8670 (\u2713=False) \u2192 NOT TURKEY
+DEBUG: Total=120, Turkey=0
+
+
+=== PYTHON STDOUT (JSON Output) ===
+{"metadata": {"time_start": "2025-12-22T07:20:00Z", "time_end": "2025-12-22T07:30:00Z", "satellite": "MTG-I1", "instrument": "FCI", "product": "FIR - Fire Detection", "total_detections": 120, "turkey_detections": 0, "bbox": {"min_lat": 35.8, "min_lon": 25.7, "max_lat": 42.2, "max_lon": 45}}, "fires": []}
+
+
+=== EXIT CODE ===
+0

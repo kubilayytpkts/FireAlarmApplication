@@ -10,6 +10,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
     public class OSMGeoDataService : IOsmGeoDataService
     {
         private readonly Geometry _turkeyBorder;
+        private readonly Geometry _turkeyForestMap;
         private readonly HttpClient _httpClient;
         private readonly IRedisService _redisService;
         private readonly ILogger<OSMGeoDataService> _logger;
@@ -26,17 +27,34 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "FireGuard-Turkey/1.0");
 
-            var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "lvl0-TR.geojson");
-            var geoJsonText = File.ReadAllText(geoJsonPath);
+            var TurkeygeoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "lvl0-TR.geojson");
+            var TurkeyForestgeoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "turkey_forest_polygon.geojson");
+
+            var turkeyGeoJsonText = File.ReadAllText(TurkeygeoJsonPath);
+            var turkeyForestGeoJsonText = File.ReadAllText(TurkeygeoJsonPath);
 
             var reader = new GeoJsonReader();
-            var featureCollection = reader.Read<FeatureCollection>(geoJsonText);
-            _turkeyBorder = featureCollection?[0]?.Geometry;
+            var turkeyBorderCollection = reader.Read<FeatureCollection>(turkeyGeoJsonText);
+            var turkeyForestCollection = reader.Read<FeatureCollection>(turkeyForestGeoJsonText);
 
-            if (_turkeyBorder == null)
-            {
-                throw new InvalidOperationException("Türkiye sınır verisi yüklenemedi!");
-            }
+            _turkeyBorder = turkeyBorderCollection?[0]?.Geometry;
+            _turkeyForestMap = turkeyForestCollection[0]?.Geometry;
+            var testPoints = new[]
+{
+    new { lat = 36.8173, lon = 39.9470, desc = "Şanlıurfa orman alanı içi" },
+    new { lat = 37.7916, lon = 38.2027, desc = "Adıyaman orman alanı içi" },
+    new { lat = 38.9143, lon = 37.8144, desc = "Malatya orman alanı içi" },
+    new { lat = 39.9334, lon = 32.8597, desc = "Ankara merkez (orman dışı)" },
+    new { lat = 41.0082, lon = 28.9784, desc = "İstanbul merkez (orman dışı)" }
+};
+
+
+            //foreach (var forest in turkeyForestCollection.Take(3))
+            //{
+            //    var envelope = forest.Geometry.EnvelopeInternal;
+            //    Console.WriteLine($"Orman sınırları: Lon({envelope.MinX:F2}-{envelope.MaxX:F2}), Lat({envelope.MinY:F2}-{envelope.MaxY:F2})");
+            //    Console.WriteLine($"Bölge: {forest.Attributes?["shape1"]}");
+            //}
         }
 
         public async Task<OSMAreaInfo> GetAreaInfoAsync(double lat, double lng)
@@ -65,7 +83,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     DistanceToNearestForest = forestDistance,
                     DistanceToNearestSettlement = settlementDistance,
                     PrimaryLandUse = DeterminePrimaryLandUse(isInForest, isInSettlement, isInProtected),
-                    //AreaNames = await GetAreaNames(lat, lng), // 🆕 Yorum kaldırıldı
+                    //AreaNames = await GetAreaNames(lat, lng), //
                     //CachedAt = DateTime.UtcNow
                 };
 
@@ -76,7 +94,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting area info for ({Lat}, {Lng})", lat, lng);
-                return new OSMAreaInfo(); // 🆕 Boş nesne döndür
+                return new OSMAreaInfo();
             }
         }
 

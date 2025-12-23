@@ -26,11 +26,11 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             try
             {
                 // Recurring job - her 15 dakikada bir
-                _recurringJobManager.AddOrUpdate<IFireDataSyncService>(
-                    "nasa-sync-job",
-                    service => service.SyncFiresFromNasaAsync(),
-                    "*/15****"
-                    );
+                //_recurringJobManager.AddOrUpdate<IFireDataSyncService>(
+                //    "nasa-sync-job",
+                //    service => service.SyncFiresFromNasaAsync(),
+                //    "*/15****"
+                //    );
 
                 _logger.LogInformation("NASA sync job scheduled (every 15 minutes)");
             }
@@ -46,14 +46,11 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         {
             try
             {
-                var delay = TimeSpan.FromMinutes(1);
+                var jobId = _backgroundJobClient.Enqueue<IFireDataSyncService>(
+                    service => service.SyncFiresFromNasaAsync()
+                );
 
-
-                var jobId = _backgroundJobClient.Schedule<IFireDataSyncService>(
-                      service => service.SyncFiresFromNasaAsync(),
-                      delay);
-
-                _logger.LogInformation("Manual NASA sync job triggered: {JobId}", jobId);
+                _logger.LogInformation("Manual NASA sync job triggered immediately: {JobId}", jobId);
                 return jobId;
             }
             catch (Exception ex)

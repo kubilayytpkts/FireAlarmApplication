@@ -481,7 +481,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         private string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "your-256-bit-secret-key-here");
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "fZ7@Qp1!vL4$rT9#xW2^mB8&nH6*kD3%Gy5+Jc0?SaEeUvYwRjFhZtPqLsMdNb");
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -543,35 +543,5 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         }
 
         #endregion
-    }
-
-    // Response Models
-    public class ServiceResponse<T>
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public T? Data { get; set; }
-        public HttpStatusCode StatusCode { get; set; }
-    }
-
-    public class LoginResponse
-    {
-        public string Token { get; set; } = string.Empty;
-        public Guid UserId { get; set; }
-        public string Email { get; set; } = string.Empty;
-        public string FullName { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
-    }
-
-    public class LocationResponse
-    {
-        public bool HasLocation { get; set; }
-        public double? CurrentLatitude { get; set; }
-        public double? CurrentLongitude { get; set; }
-        public double? HomeLatitude { get; set; }
-        public double? HomeLongitude { get; set; }
-        public double LocationAccuracy { get; set; }
-        public DateTime? LastLocationUpdate { get; set; }
-        public bool TrackingEnabled { get; set; }
     }
 }

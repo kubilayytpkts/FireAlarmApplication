@@ -43,12 +43,12 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                     return existingAlert;
                 }
 
-                //Alert content oluştur
+                //Alert content oluşturma
                 var (title, message) = await GenerateAlertContentAsync(confidence, latitude, longitude);
                 var locationDescription = await GetLocationDescriptionAsync(latitude, longitude);
                 var severity = CalculateSeverity(confidence);
 
-                //Fire Alert entity oluştur
+                //Fire Alert entity oluşturma
                 var fireAlert = new FireAlert
                 {
                     Id = new Guid(),
@@ -165,7 +165,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                     AlertSeverity.High => $"Yüksek Risk: Yangın Tespiti - {location}",
                     AlertSeverity.Medium => $"Orta Risk: Yangın Tespiti - {location}",
                     AlertSeverity.Low => $"Düşük Risk: Yangın Uyarısı - {location}",
-                    _ => $"ℹ️ Yangın İzleme - {location}"
+                    _ => $"Yangın İzleme - {location}"
                 };
 
                 var message = $"Koordinat: {latitude:F4}°, {longitude:F4}° | " +
@@ -279,7 +279,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
         #region HELPER METHODS
         /// <summary>
-        /// Confidence'a göre severity hesapla
+        /// Confidence'a göre severity hesaplama
         /// </summary>
         private AlertSeverity CalculateSeverity(double confidence)
         {
@@ -295,7 +295,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
 
         /// <summary>
-        /// Severity'ye göre alert radius belirle
+        /// Severity'ye göre alert radius belirleme
         /// </summary>
         private double DetermineAlertRadius(AlertSeverity severity)
         {

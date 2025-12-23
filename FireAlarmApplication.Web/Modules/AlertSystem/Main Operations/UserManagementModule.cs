@@ -110,9 +110,8 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             try
             {
                 if (!await context.Users.AnyAsync())
-                {
                     await SeedTestUsersAsync(context, logger);
-                }
+
             }
             catch (Exception ex)
             {
@@ -259,53 +258,162 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
         public static async Task SeedTestUsersAsync(UserManagementDbContext context, ILogger logger)
         {
-            var testUsers = new[]
+            try
             {
-                new User
+                var roles = new[]
+                 {
+                UserRole.Civilian,
+                UserRole.ForestOfficer,
+                UserRole.FireDepartment
+                 };
+
+                var locations = new (double lon, double lat, string city)[]
+                    {
+                    (32.8597, 39.9334, "Ankara"),
+                    (28.9784, 41.0082, "Istanbul"),
+                    (27.1428, 38.4237, "Izmir"),
+                    (30.7133, 36.8969, "Antalya"),
+                    (28.3636, 36.8498, "Mugla"),
+                    (35.3213, 37.0000, "Adana"),
+                    (32.4846, 37.8746, "Konya"),
+                    (29.0669, 37.7830, "Denizli"),
+                    (29.4180, 40.1826, "Bursa"),
+                    (30.5206, 39.7667, "Eskisehir"),
+                    (39.9208, 32.8541, "Aksaray"),
+                    (31.1667, 39.7500, "Afyonkarahisar"),
+                    (38.4189, 27.1287, "Aydin"),
+                    (43.0567, 39.7194, "Artvin"),
+                    (30.6956, 36.8941, "Burdur"),
+                    (30.2833, 40.7317, "Bilecik"),
+                    (30.0665, 40.1467, "Bolu"),
+                    (39.9208, 41.2769, "Erzurum"),
+                    (39.4899, 39.7500, "Erzincan"),
+                    (37.0662, 37.3833, "Gaziantep"),
+                    (32.6472, 39.1400, "Kirikkale"),
+                    (34.9556, 39.1458, "Kirşehir"),
+                    (37.8667, 37.5833, "Kahramanmaras"),
+                    (30.0500, 39.7667, "Kutahya"),
+                    (39.9208, 39.0497, "Malatya"),
+                    (34.6281, 39.7500, "Nevsehir"),
+                    (38.6244, 39.4211, "Elazig"),
+                    (40.6013, 39.9100, "Giresun"),
+                    (39.7500, 30.5206, "Eskisehir"),
+                    (41.0200, 39.7178, "Trabzon"),
+                    (39.9208, 42.0242, "Kars"),
+                    (38.4192, 43.0500, "Van"),
+                    (41.0000, 39.8333, "Samsun"),
+                    (36.8000, 34.6333, "Mersin"),
+                    (33.6167, 37.0000, "Karaman"),
+                    (36.7178, 37.0662, "Osmaniye"),
+                    (37.0000, 37.8667, "Adiyaman"),
+                    (38.7500, 30.5500, "Usak"),
+                    (42.0267, 37.9144, "Bayburt"),
+                    (41.2797, 41.0039, "Rize"),
+                    (41.6686, 41.2722, "Sinop"),
+                    (41.0167, 40.9833, "Sakarya"),
+                    (41.4564, 41.6781, "Kastamonu"),
+                    (40.1467, 39.9208, "Yozgat"),
+                    (41.1833, 38.8667, "Tokat"),
+                    (42.0000, 37.9144, "Gumushane"),
+                    (42.1867, 38.6744, "Siirt"),
+                    (43.0378, 38.4192, "Bitlis"),
+                    (42.1897, 37.7644, "Batman"),
+                    (43.1000, 37.4211, "Hakkari"),
+                    (42.1800, 38.4950, "Mardin"),
+                    (37.1583, 38.4950, "Sanliurfa"),
+                    (40.2310, 36.7167, "Corum"),
+                    (40.7500, 37.8667, "Amasya"),
+                    (39.9208, 34.8044, "Kirikkale"),
+                    (35.9083, 36.8000, "Hatay"),
+                    (39.7667, 30.0665, "Bilecik"),
+                    (39.9208, 41.2769, "Agri"),
+                    (42.0267, 37.9144, "Ardahan"),
+                    (44.0383, 37.7644, "Igdir"),
+                    (39.7667, 41.0281, "Mus"),
+                    (41.0200, 42.0000, "Artvin"),
+                    (38.4950, 41.0167, "Bingol"),
+                    (39.7678, 42.1897, "Bitlis"),
+                    (38.4192, 44.0383, "Van"),
+                    (41.2797, 39.7500, "Ordu"),
+                    (39.9208, 43.0378, "Agri"),
+                    (40.1826, 29.4180, "Bursa"),
+                    (37.8667, 32.4846, "Konya"),
+                    (38.4237, 27.1428, "Izmir"),
+                    (40.6013, 35.3213, "Amasya"),
+                    (38.6744, 36.8000, "Kahramanmaras"),
+                    (36.8941, 36.8941, "Antalya"),
+                    (37.0000, 37.1583, "Gaziantep"),
+                    (41.0082, 29.0297, "Istanbul"),
+                    (37.0662, 35.3213, "Adana"),
+                    (39.9334, 32.8597, "Ankara"),
+                    (38.4950, 27.1428, "Manisa"),
+                    (41.0200, 40.6013, "Samsun"),
+                    (39.9208, 30.5206, "Eskisehir"),
+                    (38.6744, 34.6281, "Nevsehir"),
+                    (37.8746, 32.4846, "Konya")
+                    };
+
+                var random = new Random();
+                var testUsers = new List<User>();
+
+                int totalUsers = 100;
+                int citiesCount = locations.Length;
+
+                for (int i = 0; i < citiesCount; i++)
                 {
-                    Id = Guid.NewGuid(),
-                    Email = "test.civilian@fireguard.com",
-                    FirstName = "Test",
-                    LastName = "Civilian",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
-                    Role = UserRole.Civilian,
-                    CurrentLocation = new NetTopologySuite.Geometries.Point(32.8597, 39.9334) { SRID = 4326 }, // Ankara
-                    IsActive = true,
-                    PhoneNumber ="05334546433",
-                    IsLocationTrackingEnabled = true
-                },
-                new User
-                {
-                    Id = Guid.NewGuid(),
-                    Email = "test.officer@fireguard.com",
-                    FirstName = "Test",
-                    LastName = "Officer",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
-                    Role = UserRole.ForestOfficer,
-                    CurrentLocation = new NetTopologySuite.Geometries.Point(30.7133, 36.8969) { SRID = 4326 }, // Antalya
-                    IsActive = true,
-                    PhoneNumber ="05334546434",
-                    IsLocationTrackingEnabled = true
-                },
-                new User
-                {
-                    Id = Guid.NewGuid(),
-                    Email = "test.fire@fireguard.com",
-                    FirstName = "Test",
-                    LastName = "FireDept",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
-                    Role = UserRole.FireDepartment,
-                    CurrentLocation = new NetTopologySuite.Geometries.Point(29.0297, 41.0082) { SRID = 4326 }, // İstanbul
-                    IsActive = true,
-                    PhoneNumber ="05334546435",
-                    IsLocationTrackingEnabled = true
+                    var role = roles[random.Next(roles.Length)];
+                    var loc = locations[i];
+
+                    var user = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = $"test.{loc.city.ToLower()}.{role.ToString().ToLower()}.{Guid.NewGuid()}@fireguard.com",
+                        FirstName = "Test",
+                        LastName = loc.city,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
+                        Role = role,
+                        CurrentLocation = new NetTopologySuite.Geometries.Point(loc.lon, loc.lat) { SRID = 4326 },
+                        IsActive = true,
+                        PhoneNumber = $"0533{random.Next(1000000, 9999999)}",
+                        IsLocationTrackingEnabled = true
+                    };
+
+                    testUsers.Add(user);
                 }
-            };
 
-            context.Users.AddRange(testUsers);
-            await context.SaveChangesAsync();
+                for (int i = citiesCount; i < totalUsers; i++)
+                {
+                    var role = roles[random.Next(roles.Length)];
+                    var loc = locations[random.Next(citiesCount)];
 
-            logger.LogInformation("Test users seeded: {Count} users created", testUsers.Length);
+                    var user = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = $"test.{loc.city.ToLower()}.{role.ToString().ToLower()}.{Guid.NewGuid().ToString().Substring(0, 8)}@fireguard.com",
+                        FirstName = "Test",
+                        LastName = loc.city,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
+                        Role = role,
+                        CurrentLocation = new NetTopologySuite.Geometries.Point(loc.lon, loc.lat) { SRID = 4326 },
+                        IsActive = true,
+                        PhoneNumber = $"0533{random.Next(1000000, 9999999)}",
+                        IsLocationTrackingEnabled = true
+                    };
+
+                    testUsers.Add(user);
+                }
+
+                context.Users.AddRange(testUsers);
+                await context.SaveChangesAsync();
+
+                logger.LogInformation("Test users seeded: {Count} users created", testUsers.Count);
+            }
+            catch (Exception ex)
+            {
+
+                throw ex;
+            }
+
         }
     }
 }

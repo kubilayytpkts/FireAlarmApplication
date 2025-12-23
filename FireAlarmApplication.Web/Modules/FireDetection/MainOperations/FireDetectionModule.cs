@@ -1,8 +1,11 @@
-﻿using FireAlarmApplication.Web.Modules.FireDetection.Data;
+﻿using FireAlarmApplication.Web.Modules.AlertSystem.Services;
+using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
+using FireAlarmApplication.Web.Modules.FireDetection.Data;
 using FireAlarmApplication.Web.Modules.FireDetection.Services;
 using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http.Headers;
 
 namespace FireAlarmApplication.Web.Modules.FireDetection.Modules;
 
@@ -29,20 +32,31 @@ public class FireDetectionModule : IFireGuardModule
 
         services.AddScoped<IFireDetectionService, FireDetectionService>();
         services.AddScoped<INasaFirmsService, NasaFirmsService>();
+        services.AddScoped<IMtgFireService, MtgFireService>();
         services.AddScoped<IFireDataSyncService, FireDataSyncService>();
         services.AddScoped<IBackGroundJobService, BackGroundJobService>();
         services.AddScoped<IOsmGeoDataService, OSMGeoDataService>();
         services.AddScoped<IRiskCalculationService, RiskCalculationService>();
+        services.AddScoped<IFireDetectionOrchestrator, FireDetectionOrchestrator>();
+        services.AddScoped<IRegionDetectionService, RegionDetectionService>();
         //services.AddScoped<Services.IRiskCalculationService, Services.RiskCalculationService>();
+        services.AddHttpClient<IMtgFireService, MtgFireService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.eumetsat.int/");
+            client.Timeout = TimeSpan.FromMinutes(2);
 
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+
+            client.DefaultRequestHeaders.ConnectionClose = false;
+        });
         services.AddHttpClient<INasaFirmsService, NasaFirmsService>(client =>
         {
-            var baseUrl = configuration["FireGuard:NasaFirms:BaseUrl"]
-                          ?? "https://firms.modaps.eosdis.nasa.gov/";
+            var baseUrl = configuration["FireGuard:NasaFirms:BaseUrl"] ?? "https://firms.modaps.eosdis.nasa.gov/";
             client.BaseAddress = new Uri(baseUrl);
             client.DefaultRequestHeaders.Add("User-Agent", "FireGuard-Turkey/1.0");
             client.Timeout = TimeSpan.FromMinutes(5);
-
         });
     }
 
@@ -88,7 +102,7 @@ public class FireDetectionModule : IFireGuardModule
         {
             // Database oluştur (eğer yoksa)
             await context.Database.EnsureCreatedAsync();
-            logger.LogInformation("🔥 FireDetection database ensured");
+            logger.LogInformation("FireDetection database ensured");
 
             // Test data ekle (development'ta)
             if (!await context.FireDetections.AnyAsync())
@@ -98,7 +112,7 @@ public class FireDetectionModule : IFireGuardModule
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "❌ Error seeding FireDetection module");
+            logger.LogError(ex, "Error seeding FireDetection module");
         }
     }
 
@@ -109,13 +123,11 @@ public class FireDetectionModule : IFireGuardModule
         return Results.Ok(fires);
     }
 
-    private static async Task<IResult> GetNearbyFiresAsync(
-        double lat, double lng,
-        IFireDetectionService fireService,
-        double radiusKm = 50)
+    private static async Task<IResult> GetNearbyFiresAsync(double lat, double lng, IFireDetectionOrchestrator _orchestrator, double radiusKm = 50)
     {
-        var fires = await fireService.GetFiresNearLocationAsync(lat, lng, radiusKm);
-        return Results.Ok(fires);
+        var response = await _orchestrator.GetFiresForUserLocationAsync(
+            lat, lng, radiusKm);
+        0return Results.Ok(response);
     }
 
     private static async Task<IResult> GetFireStatsAsync(IFireDetectionService fireService)

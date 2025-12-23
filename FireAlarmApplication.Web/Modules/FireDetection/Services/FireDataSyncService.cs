@@ -12,12 +12,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
     {
         private readonly IFireDetectionService _fireDecetionService;
         private readonly INasaFirmsService _nasaFirmsService;
+        private readonly IMtgFireService _MtgFireService;
         private readonly FireDetectionDbContext _fireDetectionDbContext;
         private readonly IRedisService _redisService;
         private readonly ILogger<FireDataSyncService> _logger;
         private readonly NasaFirmsOptions _options;
         public FireDataSyncService(IFireDetectionService fireDecetionService, INasaFirmsService nasaFirmsService, FireDetectionDbContext fireDetectionDbContext
-            , IRedisService redisService, ILogger<FireDataSyncService> logger, IOptions<NasaFirmsOptions> options)
+            , IRedisService redisService, ILogger<FireDataSyncService> logger, IOptions<NasaFirmsOptions> options, IMtgFireService mtgFireService)
         {
             _fireDecetionService = fireDecetionService;
             _nasaFirmsService = nasaFirmsService;
@@ -25,6 +26,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _redisService = redisService;
             _logger = logger;
             _options = options.Value;
+            _MtgFireService = mtgFireService;
         }
         /// <summary>
         /// NASA'dan veri çek ve database'e sync et
@@ -35,7 +37,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             {
                 _logger.LogInformation("Starting NASA FIRMS data sync...");
 
-                var nasaFires = await _nasaFirmsService.FetchActiveFiresAsync(_options.DefaultArea, _options.DefaultDayRange);
+                var nasaFires = await _MtgFireService.FetchActiveFiresAsync("26,36,45,42", 86400);
+                //var nasaFires = await _nasaFirmsService.FetchActiveFiresAsync();
 
                 if (!nasaFires.Any())
                 {
@@ -56,13 +59,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     //nasaFire.DetectedAt,
                     //nasaFire.Satellite
                     // );
-
                     //if (isDuplicate)
                     //{
                     //    duplicateCount++;
                     //    _logger.LogDebug("Duplicate fire skipped: ({Lat}, {Lng}) from {Satellite}", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Satellite);
                     //    continue;
                     //}
+
                     await _fireDecetionService.CreateFireDetectionAsync(nasaFire);
                     newFiresCount++;
 

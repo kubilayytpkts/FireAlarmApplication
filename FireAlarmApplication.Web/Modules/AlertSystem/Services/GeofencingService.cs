@@ -41,6 +41,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 var userInRadius = new List<UserLocationInfo>();
 
                 var cacheKey = $"users_in_radius:{centerLat:F2}:{centerLng:F2}:{radiusKm}";
+
                 var cachedUsers = await _redisService.GetAsync<List<UserLocationInfo>>(cacheKey);
 
                 //burası kontrol edilmeli mantıgı uygun olmayabilir 

@@ -31,9 +31,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         }
 
         /// <summary>
-        /// NASA FIRMS'den aktif yangınları çek (Turkey bounds)
+        /// NASA FIRMS'den aktif yangınları çek VIIRS + MODIS
         /// </summary>
-        public async Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36.2,26.0,42.0,43.2", int dayRange = 1)
+        public async Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36.2,26.0,42.0,43.2", int dayRange = 1, string source = "")
         {
             try
             {
@@ -45,7 +45,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     return new List<Models.FireDetection>();
                 }
 
-                var endPoint = $"api/area/csv/{apiKey}/VIIRS_SNPP_NRT/{area}/{dayRange}";
+                var endPoint = $"api/area/csv/{apiKey}/{source}/{area}/{dayRange}";
 
                 var response = await _httpClient.GetAsync(endPoint);
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -193,7 +193,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                fire.RiskScore = await _riskCalculationService.CalculateRiskScoreAsync(fire);
+                //fire.RiskScore = await _riskCalculationService.CalculateRiskScoreAsync(fire);
 
                 return fire;
             }

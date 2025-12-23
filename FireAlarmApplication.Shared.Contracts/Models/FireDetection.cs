@@ -64,6 +64,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Models
         /// <summary>Aktif mi? (son 24 saatte tespit edildi + status active)</summary>
         public bool IsActive => Status == FireStatus.Active && Age.TotalHours < 24;
 
+        /// <summary>MTG Probability (0-1) - sadece MTG için</summary>
+        public double? Probability { get; set; }
+
+        /// <summary>MTG Confidence Level (low/medium/high) - sadece MTG için</summary>
+        [MaxLength(20)]
+        public string? ConfidenceLevel { get; set; }
+
         /// <summary>Risk kategorisi (Low, Medium, High)</summary>
         public string RiskCategory => RiskScore switch
         {

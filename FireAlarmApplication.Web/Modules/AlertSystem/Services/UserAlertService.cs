@@ -28,7 +28,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         }
 
         /// <summary>
-        /// FireAlert için uygun kullanıcıları bul ve UserAlert oluştur
+        /// FireAlert için uygun kullanıcıları bul ve UserAlert oluşturma
         /// </summary>
         public async Task<List<UserAlert>> CreateUserAlertsAsync(Guid fireAlertId)
         {
@@ -74,7 +74,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                         continue;
                     }
 
-                    //User Alert oluştur
+                    //User Alert oluşturma
                     var userAlert = await CreateUserAlertAsync(fireAlert, user, distance, rule);
 
                     if (userAlert != null)
@@ -192,6 +192,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             }
         }
 
+        //kullanıcı bildirim tercihleri methodu, bildirim seçenekleri kontrolü
         public async Task<bool> ShouldReceiveAlertAsync(Guid userId, double fireLatitude, double fireLongitude, double confidence)
         {
             try

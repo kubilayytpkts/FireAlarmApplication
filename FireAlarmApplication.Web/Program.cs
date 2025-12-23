@@ -17,24 +17,14 @@ builder.Services.Configure<FireGuardOptions>(builder.Configuration.GetSection(Fi
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-//var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-//var fireDetectionDB = builder.Configuration.GetConnectionString("FireDetectionDB");
-
-//builder.Services.AddDbContext<FireDetectionDbContext>(options =>
-//    options.UseNpgsql(fireDetectionDB, npgsql =>
-//    {
-//        npgsql.UseNetTopologySuite();
-//        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "fire_detection");
-//    }));
-
-//builder.Services.AddDbContext<AlertSystemDbContext>(options =>
-//    options.UseNpgsql(connectionString, npgsql =>
-//    {
-//        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "alert_system");
-//    }));
+//builder.WebHost.ConfigureKestrel(options =>
+//{
+//    options.ListenAnyIP(44371); // 7251 portunu LAN’dan da erişilebilir yapar
+//});
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 {
     var configuration = provider.GetRequiredService<IConfiguration>();
@@ -60,6 +50,8 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 });
 
 builder.Services.AddScoped<IRedisService, RedisService>();
+
+
 builder.Services.AddHangfire(configuration =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -87,6 +79,18 @@ builder.Services.AddLogging(logging =>
     logging.AddDebug();
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+
+
 var modules = new List<IFireGuardModule>
 {
     new FireDetectionModule(),
@@ -99,6 +103,8 @@ builder.AddFireGuardModules(modules.ToArray());
 var app = builder.Build();
 using var scospe = app.Services.CreateScope();
 var services = scospe.ServiceProvider;
+app.UseCors("AllowLocalNetwork");
+
 
 if (!app.Environment.IsDevelopment())
 {
@@ -110,7 +116,6 @@ app.UseStaticFiles();
 app.UseRouting();
 app.MapFireGuardModules();
 app.UseHangfireServer();
-app.MapFallbackToPage("/_Host");
 app.UseHangfireDashboard("/hangfire");
 
 if (app.Environment.IsDevelopment())
@@ -131,4 +136,6 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+app.UseSwagger();
+app.UseSwaggerUI();
 app.Run();

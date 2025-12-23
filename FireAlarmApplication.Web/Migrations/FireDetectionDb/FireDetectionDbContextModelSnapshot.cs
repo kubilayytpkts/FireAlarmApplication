@@ -18,7 +18,6 @@ namespace FireAlarmApplication.Web.Migrations.FireDetectionDb
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("fire_detection")
                 .HasAnnotation("ProductVersion", "7.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -40,6 +39,10 @@ namespace FireAlarmApplication.Web.Migrations.FireDetectionDb
                         .HasPrecision(5, 2)
                         .HasColumnType("double precision");
 
+                    b.Property<string>("ConfidenceLevel")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -56,6 +59,9 @@ namespace FireAlarmApplication.Web.Migrations.FireDetectionDb
                         .IsRequired()
                         .HasColumnType("geometry(Point,4326)")
                         .HasComment("Geographic location using WGS84 coordinate system");
+
+                    b.Property<double?>("Probability")
+                        .HasColumnType("double precision");
 
                     b.Property<double>("RiskScore")
                         .ValueGeneratedOnAdd()

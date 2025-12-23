@@ -2,6 +2,7 @@
 using FireAlarmApplication.Web.Modules.FireDetection.Data;
 using FireAlarmApplication.Web.Modules.FireDetection.Models;
 using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
+using FireAlarmApplication.Web.Shared.Events;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             try
             {
                 var cachedFires = await _redis.GetAsync<List<FireDto>>(cachekey);
-                if (cachedFires != null)
+                if (cachedFires != null && cachedFires.Count > 0)
                 {
                     return cachedFires;
                 }
@@ -52,7 +53,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error getting active fires");
+                _logger.LogError(ex, "Error getting active fires");
 
                 throw;
             }
@@ -76,13 +77,13 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     .Select(f => MapToDto(f))
                     .ToListAsync();
 
-                _logger.LogInformation("🎯 Found {Count} fires within {Radius}km of ({Lat}, {Lng})", nearbyFires.Count, radiusKm, latitude, longitude);
+                _logger.LogInformation("Found {Count} fires within {Radius}km of ({Lat}, {Lng})", nearbyFires.Count, radiusKm, latitude, longitude);
 
                 return nearbyFires;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error getting nearby fires for location ({Lat}, {Lng})", latitude, longitude);
+                _logger.LogError(ex, "Error getting nearby fires for location ({Lat}, {Lng})", latitude, longitude);
                 throw;
             }
         }
@@ -153,30 +154,29 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         }
 
         /// <summary>
-        /// Yeni yangın kaydı oluştur ve event fırlat
+        /// Yeni yangın kaydı oluşturma ve event fırlatma
         /// </summary>
         public async Task<FireDto> CreateFireDetectionAsync(Models.FireDetection fireDetection)
         {
             try
             {
-                var connection = _context.Database.GetDbConnection();
                 _context.FireDetections.Add(fireDetection);
                 await _context.SaveChangesAsync();
 
                 await _redis.RemoveAsync("active_fires_turkey");
                 await _redis.RemoveAsync("fire_stats_turkey");
 
-                //var fireEvent = new FireDetectedEvent(
+                var fireEvent = new FireDetectedEvent(
 
-                //    fireDetection.Id,
-                //    fireDetection.Latitude,
-                //    fireDetection.Longitude,
-                //    fireDetection.Confidence,
-                //    fireDetection.RiskScore,
-                //    fireDetection.Satellite,
-                //    fireDetection.DetectedAt
-                //);
-                //await _mediator.Publish(fireEvent);
+                    fireDetection.Id,
+                    fireDetection.Latitude,
+                    fireDetection.Longitude,
+                    fireDetection.Confidence,
+                    fireDetection.RiskScore,
+                    fireDetection.Satellite,
+                    fireDetection.DetectedAt
+                );
+                await _mediator.Publish(fireEvent);
 
                 _logger.LogInformation("New fire created: {FireId} at ({Lat}, {Lng}) from {Satellite}",
                     fireDetection.Id, fireDetection.Latitude, fireDetection.Longitude, fireDetection.Satellite);
