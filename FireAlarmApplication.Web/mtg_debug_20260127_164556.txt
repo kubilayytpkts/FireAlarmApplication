@@ -1,0 +1,17 @@
+
+=== MTG FIRE DEBUG ===
+Time: 2026-01-27 16:45:56
+NetCDF: C:\Users\kubil\AppData\Local\Temp\675cf809-6644-414d-82b5-ccdd463346c6.nc
+
+=== PYTHON STDERR (Debug Output) ===
+  File "C:\Users\kubil\source\repos\FireAlarmApplication\FireAlarmApplication.Web\Scripts\parse_mtg_fire.py", line 32
+    max_lat = float(parts[2])x""
+                             ^
+SyntaxError: invalid syntax
+
+
+=== PYTHON STDOUT (JSON Output) ===
+
+
+=== EXIT CODE ===
+1

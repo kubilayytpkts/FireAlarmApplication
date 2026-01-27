@@ -29,62 +29,117 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _MtgFireService = mtgFireService;
         }
         /// <summary>
-        /// NASA'dan veri çek ve database'e sync et
+        /// Global veri senkronizasyonu - MTG (Avrupa/Afrika) + NASA FIRMS (Amerika/Global)
         /// </summary>
         public async Task<int> SyncFiresFromNasaAsync()
         {
             try
             {
-                _logger.LogInformation("Starting NASA FIRMS data sync...");
+                _logger.LogInformation("Starting global fire data sync...");
+                var allFires = new List<Models.FireDetection>();
 
-                var nasaFires = await _MtgFireService.FetchActiveFiresAsync("26,36,45,42", 86400);
-                //var nasaFires = await _nasaFirmsService.FetchActiveFiresAsync();
-
-                if (!nasaFires.Any())
+                // 1. MTG - Avrupa, Afrika, Orta Doğu (hızlı, 10-20 dk latency)
+                // Eumetsat MTG API bbox formatı: minLon,minLat,maxLon,maxLat
+                var mtgRegions = new[]
                 {
-                    _logger.LogInformation("No new fires from NASA FIRMS");
+                    ("Europe/Turkey", "26,36,45,42"),      // Türkiye
+                    ("Europe", "-15,35,30,72"),            // Batı Avrupa
+                    ("Africa", "-20,-35,55,40"),           // Afrika
+                    ("MiddleEast", "25,12,65,45")          // Orta Doğu
+                };
+
+                foreach (var (regionName, bbox) in mtgRegions)
+                {
+                    try
+                    {
+                        _logger.LogDebug("Fetching MTG data for {Region}...", regionName);
+                        var fires = await _MtgFireService.FetchActiveFiresAsync(bbox, 86400);
+                        if (fires.Any())
+                        {
+                            _logger.LogInformation("MTG {Region}: Found {Count} fires", regionName, fires.Count);
+                            allFires.AddRange(fires);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "MTG fetch failed for {Region}, continuing...", regionName);
+                    }
+                }
+
+                // 2. NASA FIRMS - Amerika ve diğer bölgeler (VIIRS/MODIS)
+                // NASA FIRMS bbox formatı: minLat,minLon,maxLat,maxLon
+                var nasaRegions = new[]
+                {
+                    ("NorthAmerica", "25,-130,55,-65", "VIIRS_NOAA20_NRT"),   // ABD/Kanada
+                    ("SouthAmerica", "-55,-82,15,-34", "VIIRS_NOAA20_NRT"),   // Güney Amerika
+                    ("Australia", "-45,110,-10,155", "VIIRS_NOAA20_NRT"),     // Avustralya
+                    ("SoutheastAsia", "-10,95,30,145", "VIIRS_NOAA20_NRT"),   // Güneydoğu Asya
+                };
+
+                foreach (var (regionName, bbox, source) in nasaRegions)
+                {
+                    try
+                    {
+                        _logger.LogDebug("Fetching NASA FIRMS data for {Region}...", regionName);
+                        var fires = await _nasaFirmsService.FetchActiveFiresAsync(bbox, 1, source);
+                        if (fires.Any())
+                        {
+                            _logger.LogInformation("NASA {Region}: Found {Count} fires", regionName, fires.Count);
+                            allFires.AddRange(fires);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "NASA FIRMS fetch failed for {Region}, continuing...", regionName);
+                    }
+                }
+
+                if (!allFires.Any())
+                {
+                    _logger.LogInformation("No new fires found globally");
                     return 0;
                 }
 
-                _logger.LogInformation("Received {Count} fires from NASA FIRMS", nasaFires.Count);
+                _logger.LogInformation("Total fires received: {Count}", allFires.Count);
 
                 var newFiresCount = 0;
                 var duplicateCount = 0;
 
-                foreach (var nasaFire in nasaFires)
+                foreach (var fire in allFires)
                 {
-                    //var isDuplicate = await IsFireAlreadyExistsAsync(
-                    //nasaFire.Latitude,
-                    //nasaFire.Longitude,
-                    //nasaFire.DetectedAt,
-                    //nasaFire.Satellite
-                    // );
-                    //if (isDuplicate)
-                    //{
-                    //    duplicateCount++;
-                    //    _logger.LogDebug("Duplicate fire skipped: ({Lat}, {Lng}) from {Satellite}", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Satellite);
-                    //    continue;
-                    //}
+                    var isDuplicate = await IsFireAlreadyExistsAsync(
+                        fire.Latitude,
+                        fire.Longitude,
+                        fire.DetectedAt,
+                        fire.Satellite
+                    );
 
-                    await _fireDecetionService.CreateFireDetectionAsync(nasaFire);
+                    if (isDuplicate)
+                    {
+                        duplicateCount++;
+                        continue;
+                    }
+
+                    await _fireDecetionService.CreateFireDetectionAsync(fire);
                     newFiresCount++;
 
-                    _logger.LogDebug("New fire added: ({Lat}, {Lng}) confidence: {Confidence}%", nasaFire.Latitude, nasaFire.Longitude, nasaFire.Confidence);
+                    _logger.LogDebug("New fire added: ({Lat}, {Lng}) satellite: {Satellite}",
+                        fire.Latitude, fire.Longitude, fire.Satellite);
                 }
-                // Son sync zamanını kaydet
-                await _redisService.SetAsync("last_nasa_async", DateTime.UtcNow, TimeSpan.FromDays(1));
 
-                await _redisService.RemoveAsync("active_fires_turkey");
-                await _redisService.RemoveAsync("fire_stats_turkey");
+                // Cache'leri temizle
+                await _redisService.SetAsync("last_global_sync", DateTime.UtcNow, TimeSpan.FromDays(1));
+                await _redisService.RemoveAsync("active_fires_global");
+                await _redisService.RemoveAsync("fire_stats_global");
 
-                _logger.LogInformation("NASA sync completed: {New} new fires, {Duplicate} duplicates skipped", newFiresCount, duplicateCount);
+                _logger.LogInformation("Global sync completed: {New} new fires, {Duplicate} duplicates skipped",
+                    newFiresCount, duplicateCount);
 
                 return newFiresCount;
-
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error syncing fires from NASA FIRMS");
+                _logger.LogError(ex, "Error during global fire sync");
                 throw;
             }
         }

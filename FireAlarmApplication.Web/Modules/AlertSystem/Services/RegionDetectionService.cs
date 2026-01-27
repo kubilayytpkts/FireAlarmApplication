@@ -89,16 +89,36 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
         public bool IsInVIIRSRealtimeCoverage(double latitude, double longitude)
         {
-            // NASA FIRMS Near Real-time Stream sadece belirli bölgelerde
+            // NASA FIRMS VIIRS Near Real-time - Global kapsama alanları
 
-            // Kuzey Amerika (ABD + Kanada)
-            if (latitude >= 25 && latitude <= 70 &&
+            // Kuzey Amerika (ABD + Kanada + Meksika)
+            if (latitude >= 15 && latitude <= 72 &&
                 longitude >= -170 && longitude <= -50)
                 return true;
 
-            // Avustralya
-            if (latitude >= -45 && latitude <= -10 &&
-                longitude >= 110 && longitude <= 155)
+            // Güney Amerika
+            if (latitude >= -56 && latitude <= 15 &&
+                longitude >= -82 && longitude <= -34)
+                return true;
+
+            // Avustralya + Yeni Zelanda
+            if (latitude >= -50 && latitude <= -10 &&
+                longitude >= 110 && longitude <= 180)
+                return true;
+
+            // Güneydoğu Asya
+            if (latitude >= -12 && latitude <= 30 &&
+                longitude >= 90 && longitude <= 145)
+                return true;
+
+            // Doğu Asya (Japonya, Kore, Çin doğusu)
+            if (latitude >= 20 && latitude <= 55 &&
+                longitude >= 100 && longitude <= 150)
+                return true;
+
+            // Orta Asya / Sibirya
+            if (latitude >= 40 && latitude <= 75 &&
+                longitude >= 60 && longitude <= 180)
                 return true;
 
             return false;
@@ -106,6 +126,10 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
         private string GetMTGRegionName(double latitude, double longitude)
         {
+            // Türkiye özel kontrolü
+            if (latitude >= 36 && latitude <= 42 && longitude >= 26 && longitude <= 45)
+                return "Turkey";
+
             if (latitude >= 35 && latitude <= 72 && longitude >= -15 && longitude <= 45)
                 return "Europe";
 
@@ -120,13 +144,25 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
         private string GetVIIRSRealtimeRegionName(double latitude, double longitude)
         {
-            if (latitude >= 25 && latitude <= 70 && longitude >= -170 && longitude <= -50)
+            if (latitude >= 15 && latitude <= 72 && longitude >= -170 && longitude <= -50)
                 return "North America";
 
-            if (latitude >= -45 && latitude <= -10 && longitude >= 110 && longitude <= 155)
-                return "Australia";
+            if (latitude >= -56 && latitude <= 15 && longitude >= -82 && longitude <= -34)
+                return "South America";
 
-            return "VIIRS Real-time Area";
+            if (latitude >= -50 && latitude <= -10 && longitude >= 110 && longitude <= 180)
+                return "Australia/Oceania";
+
+            if (latitude >= -12 && latitude <= 30 && longitude >= 90 && longitude <= 145)
+                return "Southeast Asia";
+
+            if (latitude >= 20 && latitude <= 55 && longitude >= 100 && longitude <= 150)
+                return "East Asia";
+
+            if (latitude >= 40 && latitude <= 75 && longitude >= 60 && longitude <= 180)
+                return "Central/North Asia";
+
+            return "Global";
         }
     }
 }

@@ -2,6 +2,7 @@
 using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
 using FireAlarmApplication.Web.Modules.FireDetection.Models;
 using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
+using System.Globalization;
 
 namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 {
@@ -24,7 +25,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             _logger = logger;
         }
 
-        public async Task<FireDetectionResponse> GetFiresForUserLocationAsync(double latitude, double longitude, double radiusKm = 100)
+        public async Task<FireDetectionResponse> GetFiresForUserLocationAsync(double latitude, double longitude, double radiusKm = 1000)
         {
             List<Models.FireDetection> fires;
 
@@ -117,7 +118,14 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             //_logger.LogInformation("Fetching from MTG (10-20 min latency)...");
 
             var bbox = CalculateBBox(lat, lon, radiusKm);
-            var bboxString = $"{bbox.minLon},{bbox.minLat},{bbox.maxLon},{bbox.maxLat}";
+            var bboxString = string.Format(
+                CultureInfo.InvariantCulture,
+                "{0:F6},{1:F6},{2:F6},{3:F6}",
+                bbox.minLat,
+                bbox.minLon,
+                bbox.maxLat,
+                bbox.maxLon
+            );
 
             return await _mtgService.FetchActiveFiresAsync(area: bboxString, minutesRange: 1440);
         }
@@ -127,7 +135,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             //_logger.LogInformation("Fetching from VIIRS Real-time (2-4 hour latency)...");
 
             var bbox = CalculateBBox(lat, lon, radiusKm);
-            var bboxString = $"{bbox.minLat},{bbox.minLon},{bbox.maxLat},{bbox.maxLon}";
+            //var bboxString = $"{bbox.minLat},{bbox.minLon},{bbox.maxLat},{bbox.maxLon}";
+            var bboxString = FormattableString.Invariant($"{bbox.minLon},{bbox.minLat},{bbox.maxLon},{bbox.maxLat}");
 
             return await _nasaService.FetchActiveFiresAsync(
                 area: bboxString,
@@ -140,7 +149,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             //_logger.LogInformation("Fetching from VIIRS Standard (3-6 hour latency)...");
 
             var bbox = CalculateBBox(lat, lon, radiusKm);
-            var bboxString = $"{bbox.minLat},{bbox.minLon},{bbox.maxLat},{bbox.maxLon}";
+            var bboxString = FormattableString.Invariant($"{bbox.minLon},{bbox.minLat},{bbox.maxLon},{bbox.maxLat}");
 
             return await _nasaService.FetchActiveFiresAsync(
                 area: bboxString,
@@ -153,7 +162,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             //_logger.LogInformation("Fetching from MODIS (3-6 hour latency)...");
 
             var bbox = CalculateBBox(lat, lon, radiusKm);
-            var bboxString = $"{bbox.minLat},{bbox.minLon},{bbox.maxLat},{bbox.maxLon}";
+            //var bboxString = $"{bbox.minLat},{bbox.minLon},{bbox.maxLat},{bbox.maxLon}";
+            var bboxString = FormattableString.Invariant($"{bbox.minLon},{bbox.minLat},{bbox.maxLon},{bbox.maxLat}");
+
 
             return await _nasaService.FetchActiveFiresAsync(
                 area: bboxString,

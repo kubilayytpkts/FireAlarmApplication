@@ -24,15 +24,16 @@ def parse_mtg_fire(nc_file, bbox_str=None):
     """
     
     # Parse bbox if provided
+    # C# kodu Eumetsat formatı gönderir: minLon,minLat,maxLon,maxLat
     if bbox_str:
         try:
             parts = bbox_str.split(',')
-            min_lat = float(parts[0])
-            min_lon = float(parts[1])
-            max_lat = float(parts[2])
-            max_lon = float(parts[3])
+            min_lon = float(parts[0])  # Türkiye: ~26
+            min_lat = float(parts[1])  # Türkiye: ~36
+            max_lon = float(parts[2])  # Türkiye: ~45
+            max_lat = float(parts[3])  # Türkiye: ~42
             use_bbox = True
-            print(f"DEBUG: Using bbox = lat[{min_lat}, {max_lat}], lon[{min_lon}, {max_lon}]", 
+            print(f"DEBUG: Using bbox = lat[{min_lat}, {max_lat}], lon[{min_lon}, {max_lon}]",
                   file=sys.stderr)
         except:
             print(f"WARNING: Invalid bbox format, using global mode", file=sys.stderr)
@@ -82,8 +83,8 @@ def parse_mtg_fire(nc_file, bbox_str=None):
     all_fires = []
     filtered_fires = []
     
-    # Find fire pixels (LOW + MEDIUM + HIGH)
-    fire_mask = (fire_result >= 2) & (fire_result <= 3)
+    # Find fire pixels (LOW=1, MEDIUM=2, HIGH=3)
+    fire_mask = (fire_result >= 1) & (fire_result <= 3)
     rows, cols = np.where(fire_mask)
     
     total_detections = len(rows)
@@ -188,7 +189,8 @@ def parse_mtg_fire(nc_file, bbox_str=None):
 
 if __name__ == "__main__":
     # Usage: python3 parse_mtg_fire.py <nc_file> [bbox]
-    # Example: python3 parse_mtg_fire.py file.nc "35.8,25.7,42.2,45"
+    # bbox formatı: minLon,minLat,maxLon,maxLat (Eumetsat formatı)
+    # Example: python3 parse_mtg_fire.py file.nc "26,36,45,42"  # Türkiye
     
     if len(sys.argv) < 2:
         print(json.dumps({

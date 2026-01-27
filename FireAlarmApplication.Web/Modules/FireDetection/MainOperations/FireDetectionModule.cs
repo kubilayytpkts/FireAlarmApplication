@@ -72,11 +72,11 @@ public class FireDetectionModule : IFireGuardModule
                 .WithSummary("Get active fires in Turkey")
                 .Produces<List<Models.FireDto>>();
 
-        // GET/api/fires/near/{lat}/{lng}
-        // Yakındaki yangınlar
+        // GET/api/fires/near/{lat}/{lng}?radiusKm=500
+        // Yakındaki yangınlar (default 500km, max 2000km)
         fireGroup.MapGet("/near/{lat:double}/{lng:double}", GetNearbyFiresAsync)
                 .WithName("GetNearbyFires")
-                .WithSummary("Get fires near specified location")
+                .WithSummary("Get fires near specified location. Use radiusKm query param (default: 500km)")
                 .Produces<List<Models.FireDto>>();
 
         // GET/api/fires/stats
@@ -123,11 +123,14 @@ public class FireDetectionModule : IFireGuardModule
         return Results.Ok(fires);
     }
 
-    private static async Task<IResult> GetNearbyFiresAsync(double lat, double lng, IFireDetectionOrchestrator _orchestrator, double radiusKm = 50)
+    private static async Task<IResult> GetNearbyFiresAsync(double lat, double lng, IFireDetectionOrchestrator _orchestrator, double radiusKm = 500)
     {
+        // Max 2000km ile sınırla
+        radiusKm = Math.Min(radiusKm, 2000);
+
         var response = await _orchestrator.GetFiresForUserLocationAsync(
             lat, lng, radiusKm);
-        0return Results.Ok(response);
+        return Results.Ok(response);
     }
 
     private static async Task<IResult> GetFireStatsAsync(IFireDetectionService fireService)

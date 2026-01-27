@@ -3,37 +3,31 @@ using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
 using System.Globalization;
 
 namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 {
     public class NasaFirmsService : INasaFirmsService
     {
-        private readonly Geometry _turkeyBorder;
         private readonly HttpClient _httpClient;
         private readonly FireGuardOptions _fireGuardOptions;
         private readonly ILogger<NasaFirmsService> _logger;
         private readonly IRiskCalculationService _riskCalculationService;
-        private readonly IOsmGeoDataService _osmGeoDataService;
-        public NasaFirmsService(HttpClient httpClient, IOptions<FireGuardOptions> fireGuardOptions, ILogger<NasaFirmsService> logger, IRiskCalculationService riskCalculationService, IOsmGeoDataService osmGeoDataService)
+
+        public NasaFirmsService(HttpClient httpClient, IOptions<FireGuardOptions> fireGuardOptions, ILogger<NasaFirmsService> logger, IRiskCalculationService riskCalculationService)
         {
             _httpClient = httpClient;
             _fireGuardOptions = fireGuardOptions.Value;
             _logger = logger;
             _riskCalculationService = riskCalculationService;
-
-            var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "TurkeyPolygonJson", "lvl0-TR.geojson");
-            var geoJsonText = File.ReadAllText(geoJsonPath);
-            var reader = new GeoJsonReader();
-            _turkeyBorder = reader.Read<Geometry>(geoJsonText);
-            _osmGeoDataService = osmGeoDataService;
         }
 
         /// <summary>
         /// NASA FIRMS'den aktif yangınları çek VIIRS + MODIS
         /// </summary>
-        public async Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36.2,26.0,42.0,43.2", int dayRange = 1, string source = "")
+        /// NASA FIRMS API bbox formatı: minLat,minLon,maxLat,maxLon
+        /// Türkiye sınırları: Lat 36-42, Lon 26-45
+        public async Task<List<Models.FireDetection>> FetchActiveFiresAsync(string area = "36,26,42,45", int dayRange = 1, string source = "")
         {
             try
             {
@@ -124,7 +118,8 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                     return fires;
                 }
 
-                for (int i = 0; i < lines.Length; i++)
+                // İlk satır header, atla (latitude,longitude,bright_ti4,scan,track,...)
+                for (int i = 1; i < lines.Length; i++)
                 {
                     var fire = await ParseCsvLine(lines[i]);
                     if (fire != null)
@@ -154,7 +149,9 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude) || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var longitude))
                     return null;
 
-                if (!await _osmGeoDataService.IsUserInTurkey(latitude, longitude))
+                // Global uygulama: Koordinat geçerlilik kontrolü
+                // Geçerli koordinat aralığı: Lat -90 to 90, Lon -180 to 180
+                if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
                     return null;
 
                 double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var brightness);
