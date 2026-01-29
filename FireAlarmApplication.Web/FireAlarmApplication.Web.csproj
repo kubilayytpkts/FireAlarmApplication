@@ -55,7 +55,6 @@
 	  <Folder Include="Migrations\FireDetectionDb\" />
 	  <Folder Include="Modules\Notification\" />
 	  <Folder Include="Modules\Reporting\" />
-	  <Folder Include="Modules\UserManagement\" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\FireAlarmApplication.Shared.Contracts\FireAlarmApplication.Shared.Contracts.csproj" />

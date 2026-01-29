@@ -229,15 +229,15 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 }
 
                 // Türkiye sınırları kontrolü
-                if (!IsValidTurkeyLocation(request.Latitude, request.longitude))
-                {
-                    return new ServiceResponse<bool>
-                    {
-                        Success = false,
-                        StatusCode = HttpStatusCode.BadRequest,
-                        Message = "Location outside Turkey boundaries"
-                    };
-                }
+                //if (!IsValidTurkeyLocation(request.Latitude, request.longitude))
+                //{
+                //    return new ServiceResponse<bool>
+                //    {
+                //        Success = false,
+                //        StatusCode = HttpStatusCode.BadRequest,
+                //        Message = "Location outside Turkey boundaries"
+                //    };
+                //}
 
                 var newLocation = new Point(request.longitude, request.Latitude) { SRID = 4326 };
 
@@ -540,6 +540,109 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 locationInfo,
                 TimeSpan.FromMinutes(30));
             //}
+        }
+
+        public async Task<ServiceResponse<bool>> UpdateUserPassword(Guid userId, UpdateUserPasswordRequest userRequest)
+        {
+            try
+            {
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                if (user == null || !BCrypt.Net.BCrypt.Verify(userRequest.UserPassword, user.PasswordHash))
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Message = "User password is incorret !",
+                        StatusCode = HttpStatusCode.BadRequest,
+                        Success = false,
+                    };
+                }
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userRequest.NewUserPassword);
+                _userManagementDbContext.Update(user);
+                _userManagementDbContext.SaveChanges();
+
+                return new ServiceResponse<bool>
+                {
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Message = "User password update successful."
+                };
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during login");
+                return new ServiceResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"User password update is failed: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<ServiceResponse<UserInformation>> GetUserInformation(Guid userId)
+        {
+            try
+            {
+                if (userId == null)
+                {
+                    return new ServiceResponse<UserInformation>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                var user = await _userManagementDbContext.Users.FindAsync(userId);
+
+                if (user == null)
+                {
+                    return new ServiceResponse<UserInformation>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.NotFound,
+                        Message = "User not found"
+                    };
+                }
+
+                UserInformation userInfo = new UserInformation
+                {
+                    createdAt = user.CreatedAt,
+                    Email = user.Email,
+                    enableEmailNotification = user.EnableEmailNotification,
+                    enablePushNotification = user.EnablePushNotification,
+                    enableSmsNotification = user.EnableSmsNotification,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    PhoneNumber = user.PhoneNumber,
+                    UserId = user.Id
+                };
+
+                return new ServiceResponse<UserInformation>
+                {
+                    Data = userInfo,
+                    Success = true,
+                    StatusCode = HttpStatusCode.OK,
+                    Message = "Success"
+                };
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
 
         #endregion

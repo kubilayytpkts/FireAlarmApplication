@@ -222,31 +222,31 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                 var error = await process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync();
 
-                var debugFilePath = Path.Combine(
-        Directory.GetCurrentDirectory(),
-        $"mtg_debug_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
-       );
+                //                var debugFilePath = Path.Combine(
+                //        Directory.GetCurrentDirectory(),
+                //        $"mtg_debug_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
+                //       );
 
 
-                var debugContent = $@"
-=== MTG FIRE DEBUG ===
-Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
-NetCDF: {ncPath}
+                //                var debugContent = $@"
+                //=== MTG FIRE DEBUG ===
+                //Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
+                //NetCDF: {ncPath}
 
-=== PYTHON STDERR (Debug Output) ===
-{error}
+                //=== PYTHON STDERR (Debug Output) ===
+                //{error}
 
-=== PYTHON STDOUT (JSON Output) ===
-{output}
+                //=== PYTHON STDOUT (JSON Output) ===
+                //{output}
 
-=== EXIT CODE ===
-{process.ExitCode}
-";
+                //=== EXIT CODE ===
+                //{process.ExitCode}
+                //";
 
 
-                await File.WriteAllTextAsync(debugFilePath, debugContent);
-                _logger.LogInformation("🐛 Debug file saved: {Path}", debugFilePath);
-                // ⬆️⬆️⬆️ DOSYAYA YAZ ⬆️⬆️⬆️
+                //await File.WriteAllTextAsync(debugFilePath, debugContent);
+                //_logger.LogInformation("🐛 Debug file saved: {Path}", debugFilePath);
+                //// ⬆️⬆️⬆️ DOSYAYA YAZ ⬆️⬆️⬆️
 
 
                 if (process.ExitCode != 0)

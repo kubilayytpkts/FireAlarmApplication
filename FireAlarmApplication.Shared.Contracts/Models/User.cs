@@ -46,6 +46,7 @@ namespace FireAlarmApplication.Shared.Contracts.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public bool IsActive { get; set; } = true;
         public DateTime? LastLoginAt { get; set; }
+        public bool IsEmailVerified { get; set; } = false;
 
         // Computed properties
         public string FullName => $"{FirstName} {LastName}";

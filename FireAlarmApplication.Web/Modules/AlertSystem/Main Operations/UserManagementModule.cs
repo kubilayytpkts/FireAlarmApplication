@@ -18,6 +18,9 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
+            var key = configuration["Jwt:Key"] ?? "fZ7@Qp1!vL4$rT9#xW2^mB8&nH6*kD3%Gy5+Jc0?SaEeUvYwRjFhZtPqLsMdNb";
+
+
             services.AddDbContextFactory<UserManagementDbContext>(options =>
             {
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
@@ -38,7 +41,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                     {
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                            System.Text.Encoding.ASCII.GetBytes(configuration["Jwt:Key"] ?? "default-key")),
+                            System.Text.Encoding.ASCII.GetBytes(key)),
                         ValidateIssuer = false,
                         ValidateAudience = false
                     };
@@ -67,6 +70,17 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                 .WithName("UpdateProfile")
                 .WithSummary("Update user profile")
                 .RequireAuthorization();
+
+            userGroup.MapPut("/profile/password", UpdateUserPasswordAsync)
+                .WithName("UpdateUserPassword")
+                .WithSummary("Update user password")
+                .RequireAuthorization();
+
+
+            userGroup.MapGet("/profile", GetUserInformation)
+               .WithName("GetUserInformation")
+               .WithSummary("Get user information")
+               .RequireAuthorization();
 
             // Location Endpoints
             userGroup.MapPost("/location", UpdateLocationAsync)
@@ -247,6 +261,28 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             return Results.Ok(stats);
         }
 
+        public static async Task<IResult> UpdateUserPasswordAsync(UpdateUserPasswordRequest updateUserPasswordRequest, IUserManagementService _userManagementService, HttpContext httpContext)
+        {
+            var userId = GetUserIdFromContext(httpContext);
+            if (userId == Guid.Empty)
+                return Results.Unauthorized();
+
+            return Results.Ok(await _userManagementService.UpdateUserPassword(userId, updateUserPasswordRequest));
+        }
+
+        public static async Task<IResult> GetUserInformation(HttpContext httpContext, IUserManagementService _userManagementService)
+        {
+            var userId = GetUserIdFromContext(httpContext);
+            if (userId == Guid.Empty)
+                return Results.Unauthorized();
+
+            var userInformation = await _userManagementService.GetUserInformation(userId);
+            if (userInformation == null)
+                return Results.NotFound();
+
+            return Results.Ok(userInformation);
+        }
+
         // Helper Methods
         private static Guid GetUserIdFromContext(HttpContext context)
         {
@@ -415,5 +451,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             }
 
         }
+
     }
 }

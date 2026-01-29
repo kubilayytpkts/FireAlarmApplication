@@ -37,6 +37,18 @@
         public DateTime? TimeStamp { get; set; }
     }
 
+    public class UserInformation
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string PhoneNumber { get; set; }
+        public bool enableEmailNotification { get; set; }
+        public bool enableSmsNotification { get; set; }
+        public bool enablePushNotification { get; set; }
+        public DateTime createdAt { get; set; }
+    }
     public class TrackingRequest
     {
         public bool Enable { get; set; }
@@ -46,5 +58,12 @@
     {
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+    }
+
+    public class UpdateUserPasswordRequest
+    {
+        public string UserPassword { get; set; }
+        public string NewUserPassword { get; set; }
+
     }
 }

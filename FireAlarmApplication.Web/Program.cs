@@ -17,22 +17,22 @@ builder.Services.Configure<FireGuardOptions>(builder.Configuration.GetSection(Fi
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-//builder.WebHost.ConfigureKestrel(options =>
-//{
-//    options.ListenAnyIP(44371); // 7251 portunu LAN’dan da erişilebilir yapar
-//});
-
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
+
+// ============================================
+// REDIS
+// ============================================
 builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 {
     var configuration = provider.GetRequiredService<IConfiguration>();
     var connectionString = configuration.GetConnectionString("Redis") ?? throw new InvalidOperationException("Redis connection string not found");
 
     var connectionMultiplexer = ConnectionMultiplexer.Connect(connectionString);
-
-    // Redis connection test
     var database = connectionMultiplexer.GetDatabase();
     var logger = provider.GetRequiredService<ILogger<Program>>();
 
@@ -51,7 +51,9 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
 
 builder.Services.AddScoped<IRedisService, RedisService>();
 
-
+// ============================================
+// HANGFIRE
+// ============================================
 builder.Services.AddHangfire(configuration =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -62,11 +64,12 @@ builder.Services.AddHangfire(configuration =>
         .UseRecommendedSerializerSettings()
         .UsePostgreSqlStorage(connectionString, new PostgreSqlStorageOptions
         {
-            QueuePollInterval = TimeSpan.FromSeconds(15), // kısa tutabilirsin test için
+            QueuePollInterval = TimeSpan.FromSeconds(15),
             PrepareSchemaIfNecessary = true,
             SchemaName = "hangfire"
         });
 });
+
 builder.Services.AddHangfireServer(options =>
 {
     options.WorkerCount = 1;
@@ -79,6 +82,9 @@ builder.Services.AddLogging(logging =>
     logging.AddDebug();
 });
 
+// ============================================
+// CORS
+// ============================================
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -89,8 +95,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-
+// ============================================
+// MODULES
+// ============================================
 var modules = new List<IFireGuardModule>
 {
     new FireDetectionModule(),
@@ -100,42 +107,70 @@ var modules = new List<IFireGuardModule>
 
 builder.AddFireGuardModules(modules.ToArray());
 
+// ============================================
+// BUILD APP
+// ============================================
 var app = builder.Build();
-using var scospe = app.Services.CreateScope();
-var services = scospe.ServiceProvider;
-app.UseCors("AllowLocalNetwork");
 
+using var scope = app.Services.CreateScope();
+var services = scope.ServiceProvider;
 
+// ============================================
+// MIDDLEWARE PIPELINE - DOĞRU SIRALAMA
+// ============================================
+
+// 1. Exception handling
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+// 2. HTTPS & Static files
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseRouting();
+
+// 3. CORS
+app.UseCors();
+
+// 4. Swagger (Dev only)
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// ============================================
+// ✅ KRİTİK SIRALAMA - SADECE BİR KERE!
+// ============================================
+app.UseRouting();         // 5️⃣ ROUTING (SADECE BİR KERE!)
+
+app.UseAuthentication();  // 6️⃣ AUTHENTICATION
+app.UseAuthorization();   // 7️⃣ AUTHORIZATION
+// ============================================
+
+// 8. Endpoints
 app.MapFireGuardModules();
+
+// 9. Hangfire
 app.UseHangfireServer();
 app.UseHangfireDashboard("/hangfire");
 
+// ============================================
+// DATA SEEDING
+// ============================================
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
+    using var seedScope = app.Services.CreateScope();
     try
     {
         await app.SeedFireGuardModulesAsync();
-        app.Logger.LogInformation("? Module seeding completed");
+        app.Logger.LogInformation("✅ Module seeding completed");
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "? Module seeding failed");
+        app.Logger.LogError(ex, "❌ Module seeding failed");
     }
 }
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
-app.UseSwagger();
-app.UseSwaggerUI();
+
 app.Run();

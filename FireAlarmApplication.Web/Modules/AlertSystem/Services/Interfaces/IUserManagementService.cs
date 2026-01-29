@@ -4,6 +4,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces
 {
     public interface IUserManagementService
     {
+        Task<ServiceResponse<UserInformation>> GetUserInformation(Guid userId);
         Task<ServiceResponse<int>> Register(RegisterRequest request);
         Task<ServiceResponse<LoginResponse>> Login(LoginRequest request);
         Task<ServiceResponse<bool>> UpdateProfile(Guid userId, UpdateProfileRequest request);
@@ -13,5 +14,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces
         Task<ServiceResponse<bool>> ToggleTracking(Guid userId, TrackingRequest request);
         Task<User?> GetUserByIdAsync(Guid userId);
         Task<List<User>> FindUsersInRadiusAsync(double lat, double lng, double radiusKm);
+        Task<ServiceResponse<bool>> UpdateUserPassword(Guid userId, UpdateUserPasswordRequest updatePasswordRequest);
     }
 }
