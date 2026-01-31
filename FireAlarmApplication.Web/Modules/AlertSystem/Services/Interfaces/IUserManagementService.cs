@@ -15,5 +15,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces
         Task<User?> GetUserByIdAsync(Guid userId);
         Task<List<User>> FindUsersInRadiusAsync(double lat, double lng, double radiusKm);
         Task<ServiceResponse<bool>> UpdateUserPassword(Guid userId, UpdateUserPasswordRequest updatePasswordRequest);
+        Task<ServiceResponse<bool>> VerifyUserEmailCode(string email, string code);
     }
 }

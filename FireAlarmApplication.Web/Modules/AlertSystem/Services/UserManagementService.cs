@@ -19,17 +19,19 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         private readonly IRedisService _redisService;
         private readonly ILogger<UserManagementService> _logger;
         private readonly IConfiguration _configuration;
-
+        private readonly IEmailVerificationService _emailVerificationService;
         public UserManagementService(
             UserManagementDbContext userManagementDbContext,
             IRedisService redisService,
             ILogger<UserManagementService> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IEmailVerificationService emailVerificationService)
         {
             _userManagementDbContext = userManagementDbContext;
             _redisService = redisService;
             _logger = logger;
             _configuration = configuration;
+            _emailVerificationService = emailVerificationService;
         }
 
         public async Task<ServiceResponse<int>> Register(RegisterRequest request)
@@ -82,15 +84,27 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 _userManagementDbContext.Users.Add(user);
                 await _userManagementDbContext.SaveChangesAsync();
 
-                _logger.LogInformation("New user registered: {Email}", user.Email);
-
-                return new ServiceResponse<int>
+                var sendEmailResult = await _emailVerificationService.SendVerificationCodeAsync(user.Email);
+                if (sendEmailResult)
                 {
-                    Message = "Registration Successful",
-                    StatusCode = HttpStatusCode.OK,
-                    Success = true,
-                    Data = 1
-                };
+                    return new ServiceResponse<int>
+                    {
+                        Message = "Please enter the code sent to your email address.",
+                        StatusCode = HttpStatusCode.OK,
+                        Success = true,
+                        Data = 1
+                    };
+                }
+                else
+                {
+                    return new ServiceResponse<int>
+                    {
+                        Message = "Operation failed, please try again later.",
+                        StatusCode = HttpStatusCode.InternalServerError,
+                        Success = true,
+                        Data = 1
+                    };
+                }
             }
             catch (Exception ex)
             {
@@ -103,13 +117,29 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<LoginResponse>> Login(LoginRequest request)
         {
             try
             {
                 var user = await _userManagementDbContext.Users
                     .FirstOrDefaultAsync(x => x.Email == request.Email && x.IsActive);
+
+                if (user != null && user.IsEmailVerified == false)
+                {
+                    await _emailVerificationService.SendVerificationCodeAsync(user.Email);
+
+                    return new ServiceResponse<LoginResponse>
+                    {
+                        Message = "Please verify your identity using the code sent to your email address.",
+                        StatusCode = HttpStatusCode.Forbidden,
+                        Success = false,
+                        Data = new LoginResponse
+                        {
+                            Email = request.Email,
+                            RequiresVerification = true
+                        }
+                    };
+                }
 
                 if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 {
@@ -160,7 +190,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<bool>> UpdateProfile(Guid userId, UpdateProfileRequest request)
         {
             try
@@ -212,7 +241,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<bool>> UpdateLocation(Guid userId, LocationUpdateRequest request)
         {
             try
@@ -300,7 +328,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<int>> BatchLocationUpdate(Guid userId, List<LocationUpdateRequest> locations)
         {
             try
@@ -351,7 +378,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<LocationResponse>> GetLocation(Guid userId)
         {
             try
@@ -395,7 +421,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<bool>> ToggleTracking(Guid userId, TrackingRequest request)
         {
             try
@@ -442,12 +467,10 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<User?> GetUserByIdAsync(Guid userId)
         {
             return await _userManagementDbContext.Users.FindAsync(userId);
         }
-
         public async Task<List<User>> FindUsersInRadiusAsync(double lat, double lng, double radiusKm)
         {
             try
@@ -475,73 +498,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 return new List<User>();
             }
         }
-
-        #region Helper Methods
-
-        private string GenerateJwtToken(User user)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "fZ7@Qp1!vL4$rT9#xW2^mB8&nH6*kD3%Gy5+Jc0?SaEeUvYwRjFhZtPqLsMdNb");
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim("userId", user.Id.ToString()),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Name, user.FullName),
-                    new Claim(ClaimTypes.Role, user.Role.ToString())
-                }),
-                Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
-        }
-
-        private bool IsValidTurkeyLocation(double latitude, double longitude)
-        {
-            return latitude >= 36 && latitude <= 42 &&
-                   longitude >= 26 && longitude <= 45;
-        }
-
-        private double CalculateDistance(double lat1, double lng1, double lat2, double lng2)
-        {
-            const double R = 6371;
-            var dLat = (lat2 - lat1) * Math.PI / 180;
-            var dLng = (lng2 - lng1) * Math.PI / 180;
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
-                    Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return R * c;
-        }
-
-        private async Task CacheUserLocation(User user)
-        {
-            //if (user.HasValidLocation)
-            //{
-            var locationInfo = new UserLocationInfo
-            {
-                UserId = user.Id,
-                Latitude = user.Latitude ?? 0,
-                Longitude = user.Longitude ?? 0,
-                UserRole = user.Role,
-                LastUpdated = user.LastLocationUpdate ?? DateTime.UtcNow,
-                IsActive = user.IsActive
-            };
-
-            await _redisService.SetAsync(
-                $"user_location:{user.Id}",
-                locationInfo,
-                TimeSpan.FromMinutes(30));
-            //}
-        }
-
         public async Task<ServiceResponse<bool>> UpdateUserPassword(Guid userId, UpdateUserPasswordRequest userRequest)
         {
             try
@@ -590,7 +546,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 };
             }
         }
-
         public async Task<ServiceResponse<UserInformation>> GetUserInformation(Guid userId)
         {
             try
@@ -644,7 +599,126 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 throw;
             }
         }
+        public async Task<ServiceResponse<bool>> VerifyUserEmailCode(string email, string code)
+        {
+            try
+            {
+                var keyCode = await _redisService.GetAsync<string>($"email_verification:{email}");
+                if (string.IsNullOrEmpty(keyCode.ToString()))
+                {
+                    return new ServiceResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = HttpStatusCode.BadRequest,
+                        Message = "You entered the wrong code or the code you entered has expired.",
+                    };
+                }
+                else
+                {
+                    if (keyCode == code)
+                    {
+                        var user = await _userManagementDbContext.Users.FirstOrDefaultAsync(x => x.Email == email);
 
+                        if (user == null) return new ServiceResponse<bool> { Message = "User not found" };
+
+                        user.IsEmailVerified = true;
+                        _userManagementDbContext.Update(user);
+                        await _userManagementDbContext.SaveChangesAsync();
+
+                        await _redisService.RemoveAsync($"email_verification:{email}");
+
+                        return new ServiceResponse<bool>
+                        {
+                            Success = true,
+                            StatusCode = HttpStatusCode.OK,
+                            Message = "verification is process successful",
+                        };
+
+
+                    }
+                    else
+                    {
+                        return new ServiceResponse<bool>
+                        {
+                            Success = false,
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Message = "You entered the wrong code or the code you entered has expired.",
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = $"{ex.Message}",
+                };
+            }
+        }
+
+        #region Helper Methods
+        private string GenerateJwtToken(User user)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "fZ7@Qp1!vL4$rT9#xW2^mB8&nH6*kD3%Gy5+Jc0?SaEeUvYwRjFhZtPqLsMdNb");
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim("userId", user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.FullName),
+                    new Claim(ClaimTypes.Role, user.Role.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
+        private bool IsValidTurkeyLocation(double latitude, double longitude)
+        {
+            return latitude >= 36 && latitude <= 42 &&
+                   longitude >= 26 && longitude <= 45;
+        }
+        private double CalculateDistance(double lat1, double lng1, double lat2, double lng2)
+        {
+            const double R = 6371;
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLng = (lng2 - lng1) * Math.PI / 180;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
+                    Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
+        private async Task CacheUserLocation(User user)
+        {
+            //if (user.HasValidLocation)
+            //{
+            var locationInfo = new UserLocationInfo
+            {
+                UserId = user.Id,
+                Latitude = user.Latitude ?? 0,
+                Longitude = user.Longitude ?? 0,
+                UserRole = user.Role,
+                LastUpdated = user.LastLocationUpdate ?? DateTime.UtcNow,
+                IsActive = user.IsActive
+            };
+
+            await _redisService.SetAsync(
+                $"user_location:{user.Id}",
+                locationInfo,
+                TimeSpan.FromMinutes(30));
+            //}
+        }
         #endregion
     }
 }

@@ -165,11 +165,10 @@ if (app.Environment.IsDevelopment())
     try
     {
         await app.SeedFireGuardModulesAsync();
-        app.Logger.LogInformation("✅ Module seeding completed");
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "❌ Module seeding failed");
+        throw ex;
     }
 }
 

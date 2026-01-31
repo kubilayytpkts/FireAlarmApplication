@@ -5,6 +5,7 @@ using FireAlarmApplication.Web.Modules.AlertSystem.Services;
 using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 {
@@ -15,7 +16,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
     public class UserManagementModule : IFireGuardModule
     {
         public string ModuleName => "UserManagement";
-
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
             var key = configuration["Jwt:Key"] ?? "fZ7@Qp1!vL4$rT9#xW2^mB8&nH6*kD3%Gy5+Jc0?SaEeUvYwRjFhZtPqLsMdNb";
@@ -34,6 +34,8 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             });
 
             services.AddScoped<IUserManagementService, UserManagementService>();
+            services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+
             services.AddAuthentication()
                 .AddJwtBearer(options =>
                 {
@@ -47,7 +49,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                     };
                 });
         }
-
         public void ConfigureEndpoints(IEndpointRouteBuilder endpoints)
         {
             //User Management API Endpoints
@@ -76,6 +77,10 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                 .WithSummary("Update user password")
                 .RequireAuthorization();
 
+            userGroup.MapPost("/profile/verify", VerifyUserEmailCode)
+                .WithName("verify")
+                .WithSummary("user verify")
+                .AllowAnonymous();
 
             userGroup.MapGet("/profile", GetUserInformation)
                .WithName("GetUserInformation")
@@ -114,7 +119,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                 .WithSummary("Get user statistics")
                 .RequireAuthorization(policy => policy.RequireRole("Admin", "SystemAdmin"));
         }
-
         public async Task SeedDataAsync(IServiceProvider serviceProvider)
         {
             using var scope = serviceProvider.CreateScope();
@@ -132,7 +136,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                 logger.LogError(ex, "Error seeding UserManagement module");
             }
         }
-
         private static async Task<IResult> RegisterAsync(RegisterRequest request, IUserManagementService userService)
         {
             var result = await userService.Register(request);
@@ -142,17 +145,35 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.BadRequest(result);
         }
-
         private static async Task<IResult> LoginAsync(LoginRequest request, IUserManagementService userService)
         {
-            var result = await userService.Login(request);
+            try
+            {
+                var result = await userService.Login(request);
 
-            if (result.Success)
-                return Results.Ok(result);
+                if (result.Success)
+                {
+                    return Results.Ok(result);
+                }
 
-            return Results.Unauthorized();
+                if (result.Data?.RequiresVerification == true)
+                {
+                    return Results.Json(result, statusCode: 403);
+                }
+
+                if (result.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    return Results.Unauthorized();
+                }
+
+                return Results.Json(result, statusCode: (int)result.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Login endpoint error: {ex.Message}");
+                return Results.Problem("An error occurred during login");
+            }
         }
-
         private static async Task<IResult> UpdateProfileAsync(UpdateProfileRequest request, IUserManagementService _userManagementService, HttpContext httpContext)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -166,7 +187,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.BadRequest(result);
         }
-
         private static async Task<IResult> UpdateLocationAsync(LocationUpdateRequest request, IUserManagementService userService, HttpContext httpContext)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -180,7 +200,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.BadRequest(result);
         }
-
         private static async Task<IResult> BatchLocationUpdateAsync(List<LocationUpdateRequest> requests, IUserManagementService userService, HttpContext httpContext)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -194,7 +213,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.BadRequest(result);
         }
-
         private static async Task<IResult> GetLocationAsync(IUserManagementService userService, HttpContext httpContext)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -208,7 +226,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.NotFound(result);
         }
-
         private static async Task<IResult> ToggleTrackingAsync(TrackingRequest request, IUserManagementService userService, HttpContext httpContext)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -222,7 +239,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.BadRequest(result);
         }
-
         private static async Task<IResult> GetNearbyUsersAsync(double lat, double lng, double radius, IUserManagementService userService)
         {
             var users = await userService.FindUsersInRadiusAsync(lat, lng, radius);
@@ -242,7 +258,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
                 })
             });
         }
-
         private static async Task<IResult> GetUserStatsAsync(UserManagementDbContext context)
         {
             var stats = new
@@ -260,7 +275,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.Ok(stats);
         }
-
         public static async Task<IResult> UpdateUserPasswordAsync(UpdateUserPasswordRequest updateUserPasswordRequest, IUserManagementService _userManagementService, HttpContext httpContext)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -269,7 +283,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.Ok(await _userManagementService.UpdateUserPassword(userId, updateUserPasswordRequest));
         }
-
         public static async Task<IResult> GetUserInformation(HttpContext httpContext, IUserManagementService _userManagementService)
         {
             var userId = GetUserIdFromContext(httpContext);
@@ -282,7 +295,11 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Results.Ok(userInformation);
         }
-
+        public static async Task<IResult> VerifyUserEmailCode(IUserManagementService _userManagementService, string email, string code)
+        {
+            var result = await _userManagementService.VerifyUserEmailCode(email, code);
+            return Results.Ok(result);
+        }
         // Helper Methods
         private static Guid GetUserIdFromContext(HttpContext context)
         {
@@ -291,7 +308,6 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
 
             return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
         }
-
         public static async Task SeedTestUsersAsync(UserManagementDbContext context, ILogger logger)
         {
             try
