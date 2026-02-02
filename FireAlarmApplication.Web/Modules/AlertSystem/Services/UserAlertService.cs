@@ -252,6 +252,8 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                     IsDelivered = false,
                     CreatedAt = DateTime.UtcNow,
                     FireAlert = fireAlert,
+                    FcmToken = user.FcmToken,
+                    ApnsToken = user.ApnsToken
                 };
 
                 _logger.LogDebug("UserAlert created for User {UserId} (Role: {Role}, Distance: {Distance}km)", user.UserId, user.UserRole, distance);

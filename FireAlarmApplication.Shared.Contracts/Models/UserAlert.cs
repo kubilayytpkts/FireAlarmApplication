@@ -1,4 +1,5 @@
 ﻿using FireAlarmApplication.Shared.Contracts.Enums;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FireAlarmApplication.Shared.Contracts.Models
 {
@@ -23,6 +24,11 @@ namespace FireAlarmApplication.Shared.Contracts.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public virtual FireAlert FireAlert { get; set; } = null!;
+
+        [NotMapped]
+        public string? FcmToken { get; set; }
+        [NotMapped]
+        public string? ApnsToken { get; set; }
 
     }
 }

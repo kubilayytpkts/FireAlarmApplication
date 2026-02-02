@@ -1,5 +1,6 @@
 ﻿using FireAlarmApplication.Shared.Contracts.Enums;
 using FireAlarmApplication.Shared.Contracts.Models;
+using FireAlarmApplication.Web.Modules.AlertSystem.Consumers;
 using FireAlarmApplication.Web.Modules.AlertSystem.Data;
 using FireAlarmApplication.Web.Modules.AlertSystem.Services;
 using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
@@ -32,7 +33,8 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Main_Operations
             services.AddScoped<IUserAlertService, UserAlertService>();
             services.AddScoped<IGeofencingService, GeofencingService>();
             services.AddScoped<IAlertRuleService, AlertRuleService>();
-
+            services.AddHostedService<PushNotificationConsumer>();
+            services.AddHttpClient<PushNotificationConsumer>();
             // DbContextFactory for GeofencingService
             services.AddDbContextFactory<UserManagementDbContext>(options =>
             {

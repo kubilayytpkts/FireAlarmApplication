@@ -1,5 +1,6 @@
 ﻿using FireAlarmApplication.Shared.Contracts.Enums;
 using FireAlarmApplication.Shared.Contracts.Models;
+using FireAlarmApplication.Web.Modules.AlertSystem.Data;
 using FireAlarmApplication.Web.Modules.AlertSystem.Services.Interfaces;
 using FireAlarmApplication.Web.Shared.Common;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         private readonly IModel _channel;
         private readonly IAsyncPolicy _retryPolicy;
         private readonly FireGuardOptions _fireGuardOptions;
-
+        private readonly UserManagementDbContext _userManagementDbContext;
 
         // Exchange and Queue names
         private const string EXCHANGE_NAME = "fireguard.notifications";
@@ -30,7 +31,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
         private const string PUSH_QUEUE = "fireguard.notifications.push";
         private const string DEAD_LETTER_QUEUE = "fireguard.notifications.dlq";
 
-        public NotificationService(ILogger<NotificationService> logger, IConfiguration configuration, IOptions<FireGuardOptions> fireGuardOptions)
+        public NotificationService(ILogger<NotificationService> logger, IConfiguration configuration, IOptions<FireGuardOptions> fireGuardOptions, UserManagementDbContext userManagementDbContext)
         {
             try
             {
@@ -69,6 +70,7 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                 throw;
             }
 
+            _userManagementDbContext = userManagementDbContext;
         }
 
         /// <summary>
@@ -177,9 +179,21 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             }
         }
 
-        public Task<bool> SendPushNotificationAsync(UserAlert userAlert)
+        public async Task<bool> SendPushNotificationAsync(UserAlert userAlert)
         {
-            throw new NotImplementedException();
+            try
+            {
+                return await PublishNotificationAsync(
+                userAlert,
+                notificationType: "push",
+                routingKey: $"notification.push.{userAlert.FireAlert?.Severity.ToString().ToLower() ?? "low"}"
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending push for UserAlert {Id}", userAlert.Id);
+                return false;
+            }
         }
 
         public Task<bool> SendSmsNotificationAsync(UserAlert userAlert)
@@ -281,7 +295,9 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                             ["UserRole"] = userAlert.UserRole.ToString(),
                             ["DistanceKm"] = userAlert.DistanceToFireKm,
                             ["Latitude"] = userAlert.UserLatitude,
-                            ["Longitude"] = userAlert.UserLongitude
+                            ["Longitude"] = userAlert.UserLongitude,
+                            ["FcmToken"] = userAlert.FcmToken ?? "",
+                            ["ApnsToken"] = userAlert.ApnsToken ?? ""
                         },
                         RetryCount = 0,
                         CreatedAt = DateTime.UtcNow,
@@ -344,5 +360,31 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
             };
         }
         #endregion
+
+        private (string title, string body) BuildNotificationContent(UserAlert userAlert)
+        {
+            var severity = userAlert.FireAlert?.Severity ?? AlertSeverity.Low;
+            var distance = userAlert.DistanceToFireKm;
+
+            return severity switch
+            {
+                AlertSeverity.Critical => (
+                    "🔴 CRITICAL: Fire Alert!",
+                    $"An active fire has been detected {distance:F1} km from your location! Please move to a safe area immediately."
+                ),
+                AlertSeverity.High => (
+                    "🟠 Fire Alert",
+                    $"A fire has been detected {distance:F1} km from your location. Please stay alert."
+                ),
+                AlertSeverity.Medium => (
+                    "🟡 Area Warning",
+                    $"A fire has been detected {distance:F1} km away in your monitored area."
+                ),
+                _ => (
+                    "🔵 Fire Info",
+                    $"A fire has been detected {distance:F1} km from your location."
+                )
+            };
+        }
     }
 }

@@ -7,5 +7,8 @@ public class UserLocationInfo
     public double Longitude { get; set; }
     public UserRole UserRole { get; set; }
     public DateTime LastUpdated { get; set; }
+    public string? FcmToken { get; set; }
+    public string? ApnsToken { get; set; }
     public bool IsActive { get; set; }
+
 }

@@ -57,7 +57,8 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
 
                 var users = await context.Set<User>()
                     .Where(x => x.IsActive && x.IsLocationTrackingEnabled)
-                    .Where(x => x.CurrentLocation != null && x.CurrentLocation.IsWithinDistance(centerPoint, radiusMeters) || x.HomeLocation != null && x.CurrentLocation == null && x.HomeLocation.IsWithinDistance(centerPoint, radiusMeters))
+                    .Where(x => x.CurrentLocation != null && x.CurrentLocation.IsWithinDistance(centerPoint, radiusMeters) || x.HomeLocation != null && x.CurrentLocation == null && x.HomeLocation.IsWithinDistance(centerPoint, radiusMeters) && x.IsEmailVerified == true)
+                    .Where(x => x.ApnsToken != null || x.FcmToken != null)
                     .Select(user => new
                     {
                         user.Id,
@@ -66,6 +67,9 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                         user.HomeLocation,
                         user.LastLocationUpdate,
                         user.IsActive,
+                        user.ApnsToken,
+                        user.FcmToken
+
                     }).ToListAsync();
 
                 foreach (var user in users)
@@ -84,6 +88,8 @@ namespace FireAlarmApplication.Web.Modules.AlertSystem.Services
                             Longitude = lng,
                             UserRole = user.Role,
                             LastUpdated = user.LastLocationUpdate ?? DateTime.UtcNow,
+                            ApnsToken = user.ApnsToken,
+                            FcmToken = user.FcmToken,
                             IsActive = user.IsActive,
                         });
                     }
