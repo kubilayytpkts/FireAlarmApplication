@@ -1,106 +1,134 @@
-﻿using FireAlarmApplication.Web.Modules.FireDetection.Data;
+﻿using FireAlarmApplication.Shared.Contracts.Enums;
+using FireAlarmApplication.Web.Modules.FireDetection.Data;
 using FireAlarmApplication.Web.Modules.FireDetection.Services.Interfaces;
-using FireAlarmApplication.Web.Shared.Common;
 using FireAlarmApplication.Web.Shared.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
 
 namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 {
     public class FireDataSyncService : IFireDataSyncService
     {
-        private readonly IFireDetectionService _fireDecetionService;
+        private readonly IFireDetectionService _fireDetectionService;
         private readonly INasaFirmsService _nasaFirmsService;
-        private readonly IMtgFireService _MtgFireService;
+        private readonly IMtgFireService _mtgFireService;
         private readonly FireDetectionDbContext _fireDetectionDbContext;
         private readonly IRedisService _redisService;
         private readonly ILogger<FireDataSyncService> _logger;
-        private readonly NasaFirmsOptions _options;
-        public FireDataSyncService(IFireDetectionService fireDecetionService, INasaFirmsService nasaFirmsService, FireDetectionDbContext fireDetectionDbContext
-            , IRedisService redisService, ILogger<FireDataSyncService> logger, IOptions<NasaFirmsOptions> options, IMtgFireService mtgFireService)
+
+        /// <summary>
+        /// NASA FIRMS icin bolgesel sync - MTG kapsami disindaki bolgeler
+        /// MTG zaten Avrupa/Afrika/Orta Dogu'yu tek seferde kapsiyor
+        /// </summary>
+        private static readonly (string Name, double CenterLat, double CenterLon, double RadiusKm)[] NasaRegions = new[]
         {
-            _fireDecetionService = fireDecetionService;
+            ("NorthAmerica",  40.0, -100.0, 2500.0),
+            ("SouthAmerica", -15.0,  -60.0, 2500.0),
+            ("Australia",    -25.0,  135.0, 1500.0),
+            ("SoutheastAsia", 10.0,  110.0, 1500.0),
+            ("EastAsia",      35.0,  120.0, 1500.0),
+        };
+
+        public FireDataSyncService(
+            IFireDetectionService fireDetectionService,
+            INasaFirmsService nasaFirmsService,
+            IMtgFireService mtgFireService,
+            FireDetectionDbContext fireDetectionDbContext,
+            IRedisService redisService,
+            ILogger<FireDataSyncService> logger)
+        {
+            _fireDetectionService = fireDetectionService;
             _nasaFirmsService = nasaFirmsService;
+            _mtgFireService = mtgFireService;
             _fireDetectionDbContext = fireDetectionDbContext;
             _redisService = redisService;
             _logger = logger;
-            _options = options.Value;
-            _MtgFireService = mtgFireService;
         }
+
         /// <summary>
-        /// Global veri senkronizasyonu - MTG (Avrupa/Afrika) + NASA FIRMS (Amerika/Global)
+        /// Global veri senkronizasyonu
+        /// 1) MTG - tek seferde tum kapsama alani (Avrupa, Afrika, Orta Dogu, Turkiye)
+        ///    Full Disk urun indirip bbox olmadan parse eder, land mask + confidence filtreler
+        /// 2) NASA FIRMS - bolgesel (Amerika, Asya, Okyanusya)
+        ///    Her bolge icin ayri API cagrisi yapar
         /// </summary>
-        public async Task<int> SyncFiresFromNasaAsync()
+        public async Task<int> SyncFiresFromSatellitesAsync()
         {
             try
             {
                 _logger.LogInformation("Starting global fire data sync...");
                 var allFires = new List<Models.FireDetection>();
 
-                // 1. MTG - Avrupa, Afrika, Orta Doğu (hızlı, 10-20 dk latency)
-                // Eumetsat MTG API bbox formatı: minLon,minLat,maxLon,maxLat
-                var mtgRegions = new[]
+                // =============================================
+                // 1) MTG - Tek seferde tum kapsama alani
+                // Avrupa, Afrika, Orta Dogu, Turkiye
+                // Full Disk urun zaten tum bolgeyi kapsiyor
+                // bbox gondermeye gerek yok, land mask + confidence filtreler
+                // =============================================
+                try
                 {
-                    ("Europe/Turkey", "26,36,45,42"),      // Türkiye
-                    ("Europe", "-15,35,30,72"),            // Batı Avrupa
-                    ("Africa", "-20,-35,55,40"),           // Afrika
-                    ("MiddleEast", "25,12,65,45")          // Orta Doğu
-                };
+                    _logger.LogInformation("Fetching MTG fires (Europe/Africa/Middle East)...");
+                    var mtgFires = await _mtgFireService.FetchActiveFiresAsync(area: null, minutesRange: 1440);
 
-                foreach (var (regionName, bbox) in mtgRegions)
-                {
-                    try
+                    if (mtgFires.Any())
                     {
-                        _logger.LogDebug("Fetching MTG data for {Region}...", regionName);
-                        var fires = await _MtgFireService.FetchActiveFiresAsync(bbox, 86400);
-                        if (fires.Any())
-                        {
-                            _logger.LogInformation("MTG {Region}: Found {Count} fires", regionName, fires.Count);
-                            allFires.AddRange(fires);
-                        }
+                        _logger.LogInformation("MTG: Found {Count} fires", mtgFires.Count);
+                        allFires.AddRange(mtgFires);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogWarning(ex, "MTG fetch failed for {Region}, continuing...", regionName);
+                        _logger.LogInformation("MTG: No fires found");
                     }
                 }
-
-                // 2. NASA FIRMS - Amerika ve diğer bölgeler (VIIRS/MODIS)
-                // NASA FIRMS bbox formatı: minLat,minLon,maxLat,maxLon
-                var nasaRegions = new[]
+                catch (Exception ex)
                 {
-                    ("NorthAmerica", "25,-130,55,-65", "VIIRS_NOAA20_NRT"),   // ABD/Kanada
-                    ("SouthAmerica", "-55,-82,15,-34", "VIIRS_NOAA20_NRT"),   // Güney Amerika
-                    ("Australia", "-45,110,-10,155", "VIIRS_NOAA20_NRT"),     // Avustralya
-                    ("SoutheastAsia", "-10,95,30,145", "VIIRS_NOAA20_NRT"),   // Güneydoğu Asya
-                };
+                    _logger.LogWarning(ex, "MTG fetch failed, continuing with NASA...");
+                }
 
-                foreach (var (regionName, bbox, source) in nasaRegions)
+                // =============================================
+                // 2) NASA FIRMS - Bolgesel
+                // MTG kapsami disindaki bolgeler: Amerika, Asya, Okyanusya
+                // Her bolge icin ayri bbox ile API cagrisi
+                // =============================================
+                _logger.LogInformation("Fetching NASA fires ({RegionCount} regions)...", NasaRegions.Length);
+
+                foreach (var (regionName, centerLat, centerLon, radiusKm) in NasaRegions)
                 {
                     try
                     {
-                        _logger.LogDebug("Fetching NASA FIRMS data for {Region}...", regionName);
-                        var fires = await _nasaFirmsService.FetchActiveFiresAsync(bbox, 1, source);
+                        var bbox = CalculateBBox(centerLat, centerLon, radiusKm);
+
+                        _logger.LogDebug("Syncing {Region}: bbox=({MinLon},{MinLat},{MaxLon},{MaxLat})",
+                            regionName, bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat);
+
+                        var fires = await FetchFromNASA(bbox, "VIIRS_NOAA20_NRT");
+
                         if (fires.Any())
                         {
                             _logger.LogInformation("NASA {Region}: Found {Count} fires", regionName, fires.Count);
                             allFires.AddRange(fires);
                         }
+                        else
+                        {
+                            _logger.LogDebug("NASA {Region}: No fires found", regionName);
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "NASA FIRMS fetch failed for {Region}, continuing...", regionName);
+                        _logger.LogWarning(ex, "NASA fetch failed for {Region}, continuing...", regionName);
                     }
                 }
 
+                // =============================================
+                // 3) DB'ye kaydet (duplicate kontrolu ile)
+                // =============================================
                 if (!allFires.Any())
                 {
-                    _logger.LogInformation("No new fires found globally");
+                    _logger.LogInformation("No fires found from any source");
                     return 0;
                 }
 
-                _logger.LogInformation("Total fires received: {Count}", allFires.Count);
+                _logger.LogInformation("Total fires from all sources: {Count}. Saving to DB...", allFires.Count);
 
                 var newFiresCount = 0;
                 var duplicateCount = 0;
@@ -120,20 +148,17 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
                         continue;
                     }
 
-                    await _fireDecetionService.CreateFireDetectionAsync(fire);
+                    await _fireDetectionService.CreateFireDetectionAsync(fire);
                     newFiresCount++;
-
-                    _logger.LogDebug("New fire added: ({Lat}, {Lng}) satellite: {Satellite}",
-                        fire.Latitude, fire.Longitude, fire.Satellite);
                 }
 
-                // Cache'leri temizle
+                // Cache temizle
                 await _redisService.SetAsync("last_global_sync", DateTime.UtcNow, TimeSpan.FromDays(1));
-                await _redisService.RemoveAsync("active_fires_global");
-                await _redisService.RemoveAsync("fire_stats_global");
+                await _redisService.RemoveAsync("active_fires_turkey");
+                await _redisService.RemoveAsync("fire_stats_turkey");
 
-                _logger.LogInformation("Global sync completed: {New} new fires, {Duplicate} duplicates skipped",
-                    newFiresCount, duplicateCount);
+                _logger.LogInformation("Sync completed: {New} new, {Duplicate} duplicates, {Total} total",
+                    newFiresCount, duplicateCount, allFires.Count);
 
                 return newFiresCount;
             }
@@ -144,24 +169,68 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             }
         }
 
+        // ============================================
+        // SATELLITE FETCH METHODS
+        // ============================================
+
         /// <summary>
-        /// Duplicate kontrolü - spatial ve temporal proximity
+        /// NASA FIRMS'den veri cek
+        /// NASA API bbox formati: W,S,E,N = minLon,minLat,maxLon,maxLat
+        /// </summary>
+        private async Task<List<Models.FireDetection>> FetchFromNASA(
+            (double minLat, double minLon, double maxLat, double maxLon) bbox,
+            string source)
+        {
+            // NASA formati: W,S,E,N = minLon,minLat,maxLon,maxLat
+            var bboxString = FormattableString.Invariant(
+                $"{bbox.minLon},{bbox.minLat},{bbox.maxLon},{bbox.maxLat}");
+
+            return await _nasaFirmsService.FetchActiveFiresAsync(
+                area: bboxString,
+                dayRange: 1,
+                source: source);
+        }
+
+        // ============================================
+        // HELPER METHODS
+        // ============================================
+
+        /// <summary>
+        /// Merkez koordinat + yaricap'tan bbox hesapla
+        /// </summary>
+        private (double minLat, double minLon, double maxLat, double maxLon) CalculateBBox(
+            double lat, double lon, double radiusKm)
+        {
+            var latDelta = radiusKm / 111.0;
+            var lonDelta = radiusKm / (111.0 * Math.Cos(lat * Math.PI / 180.0));
+
+            return (
+                minLat: lat - latDelta,
+                minLon: lon - lonDelta,
+                maxLat: lat + latDelta,
+                maxLon: lon + lonDelta
+            );
+        }
+
+        /// <summary>
+        /// Duplicate kontrolu - spatial ve temporal proximity
+        /// 1km yaricap, 6 saat zaman toleransi, ayni uydu
         /// </summary>
         public async Task<bool> IsFireAlreadyExistsAsync(double latitude, double longitude, DateTime detectedAt, string satellite)
         {
             try
             {
                 var point = new Point(longitude, latitude) { SRID = 4326 };
-                var proximityMeters = 50; // 1km tolerance
-                var timeToleranceHours = 6; // 6 saat tolerance
+                var proximityMeters = 1000;
+                // geometry(Point,4326) derece cinsinden calisir
+                var proximityDegrees = proximityMeters / 111_320.0;
+                var timeToleranceHours = 6;
 
                 var startTime = detectedAt.AddHours(-timeToleranceHours);
                 var endTime = detectedAt.AddHours(timeToleranceHours);
 
-                var satelliteBase = satellite.Split('-')[0]; // "N-VIIRS" → "N"
-
                 var existingFire = await _fireDetectionDbContext.FireDetections
-                    .Where(f => f.Location.IsWithinDistance(point, proximityMeters))
+                    .Where(f => f.Location.IsWithinDistance(point, proximityDegrees))
                     .Where(f => f.Satellite == satellite)
                     .Where(f => f.DetectedAt >= startTime && f.DetectedAt <= endTime)
                     .AnyAsync();
@@ -176,18 +245,57 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
         }
 
         /// <summary>
-        /// Son sync zamanını Redis'ten al
+        /// Son sync zamanini Redis'ten al
         /// </summary>
         public async Task<DateTime?> GetLastSyncTimeAsync()
         {
             try
             {
-                return await _redisService.GetAsync<DateTime?>("last_nasa_sync");
+                return await _redisService.GetAsync<DateTime?>("last_global_sync");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting last sync time");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// 7 gunden eski Extinguished/FalsePositive kayitlarini temizle
+        /// </summary>
+        public async Task<int> CleanupOldFireDetectionsAsync()
+        {
+            try
+            {
+                var cutoffDate = DateTime.UtcNow.AddDays(-7);
+
+                var oldRecords = await _fireDetectionDbContext.FireDetections
+                    .Where(f => f.DetectedAt < cutoffDate)
+                    .Where(f => f.Status == FireStatus.Extinguished
+                             || f.Status == FireStatus.FalsePositive)
+                    .ToListAsync();
+
+                if (!oldRecords.Any())
+                {
+                    _logger.LogDebug("No old fire detections to cleanup");
+                    return 0;
+                }
+
+                _fireDetectionDbContext.FireDetections.RemoveRange(oldRecords);
+                await _fireDetectionDbContext.SaveChangesAsync();
+
+                await _redisService.RemoveAsync("active_fires_turkey");
+                await _redisService.RemoveAsync("fire_stats_turkey");
+
+                _logger.LogInformation("Cleaned up {Count} old fire detection records (older than {Date})",
+                    oldRecords.Count, cutoffDate);
+
+                return oldRecords.Count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning up old fire detections");
+                return 0;
             }
         }
     }

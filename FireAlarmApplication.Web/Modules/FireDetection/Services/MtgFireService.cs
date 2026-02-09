@@ -117,8 +117,6 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
             var endTime = DateTime.UtcNow;
             var startTime = endTime.AddMinutes(-minutesRange);
 
-            minutesRange = 86400;
-
             var url = $"{_fireGuardOptions.Eumetsat.BaseUrl}/data/search-products/os" +
                       $"?pi={_fireGuardOptions.Eumetsat.Collection}" +
                       $"&bbox={bbox}" +
@@ -208,7 +206,7 @@ namespace FireAlarmApplication.Web.Modules.FireDetection.Services
 
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = "python3",
+                    FileName = "python",
                     Arguments = $"\"{scriptPath}\" \"{ncPath}\" \"{bbox}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

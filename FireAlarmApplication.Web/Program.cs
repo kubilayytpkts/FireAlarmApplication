@@ -112,11 +112,8 @@ builder.AddFireGuardModules(modules.ToArray());
 // ============================================
 var app = builder.Build();
 
-using var scope = app.Services.CreateScope();
-var services = scope.ServiceProvider;
-
 // ============================================
-// MIDDLEWARE PIPELINE - DOĞRU SIRALAMA
+// MIDDLEWARE PIPELINE
 // ============================================
 
 // 1. Exception handling
@@ -168,7 +165,9 @@ if (app.Environment.IsDevelopment())
     }
     catch (Exception ex)
     {
-        throw ex;
+        var seedLogger = seedScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        seedLogger.LogError(ex, "Error during data seeding");
+        throw;
     }
 }
 

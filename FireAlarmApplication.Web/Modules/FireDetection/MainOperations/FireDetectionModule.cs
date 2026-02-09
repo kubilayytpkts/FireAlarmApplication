@@ -102,7 +102,9 @@ public class FireDetectionModule : IFireGuardModule
         {
             // Database oluştur (eğer yoksa)
             await context.Database.EnsureCreatedAsync();
-            logger.LogInformation("FireDetection database ensured");
+            // Hangfire recurring job'larını schedule et
+            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackGroundJobService>();
+            //backgroundJobService.ScheduleAllJobs();
 
             // Test data ekle (development'ta)
             if (!await context.FireDetections.AnyAsync())
@@ -123,14 +125,13 @@ public class FireDetectionModule : IFireGuardModule
         return Results.Ok(fires);
     }
 
-    private static async Task<IResult> GetNearbyFiresAsync(double lat, double lng, IFireDetectionOrchestrator _orchestrator, double radiusKm = 500)
+    private static async Task<IResult> GetNearbyFiresAsync(double lat, double lng, IFireDetectionService fireService, double radiusKm = 500)
     {
         // Max 2000km ile sınırla
         radiusKm = Math.Min(radiusKm, 2000);
 
-        var response = await _orchestrator.GetFiresForUserLocationAsync(
-            lat, lng, radiusKm);
-        return Results.Ok(response);
+        var fires = await fireService.GetFiresNearLocationAsync(lat, lng, radiusKm);
+        return Results.Ok(fires);
     }
 
     private static async Task<IResult> GetFireStatsAsync(IFireDetectionService fireService)
@@ -163,23 +164,19 @@ public class FireDetectionModule : IFireGuardModule
         logger.LogInformation("Test fire data seeded: {FireId} near Ankara", testFire.Id);
     }
 
-    private static async Task<IResult> TriggerManualSyncAsync(IFireDataSyncService fireDetectionService)
+    private static async Task<IResult> TriggerManualSyncAsync(IBackGroundJobService backgroundJobService)
     {
         try
         {
-            //var jobId = backGroundJobService.TriggerManualSyncAsync();
+            var jobId = await backgroundJobService.TriggerManualSyncAsync();
 
-            //return Results.Ok(new
-            //{
-            //    Success = true,
-            //    Message = "Manual sync triggered successfully",
-            //    JobId = jobId,
-            //    Timestamp = DateTime.UtcNow
-            //});
-
-            var result = await fireDetectionService.SyncFiresFromNasaAsync();
-
-            return Results.Ok();
+            return Results.Ok(new
+            {
+                Success = true,
+                Message = "Manual sync triggered successfully",
+                JobId = jobId,
+                Timestamp = DateTime.UtcNow
+            });
         }
         catch (Exception ex)
         {

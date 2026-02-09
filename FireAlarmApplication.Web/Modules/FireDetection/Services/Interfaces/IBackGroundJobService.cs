@@ -2,10 +2,19 @@
 {
     public interface IBackGroundJobService
     {
-        /// <summary>Periyodik NASA sync job'unu başlat</summary>
-        void ScheduleNasaSync();
+        /// <summary>Tüm recurring job'ları schedule et (startup'ta çağrılır)</summary>
+        void ScheduleAllJobs();
 
-        /// <summary>Manuel NASA sync trigger</summary>
+        /// <summary>Periyodik uydu veri sync job'unu başlat</summary>
+        void ScheduleFireDataSync();
+
+        /// <summary>Expired alert'leri temizleme job'ı</summary>
+        void ScheduleExpiredAlertCleanup();
+
+        /// <summary>Expired/eski fire detection kayıtlarını temizleme job'ı</summary>
+        void ScheduleExpiredFireCleanup();
+
+        /// <summary>Manuel sync trigger (test/admin amaçlı)</summary>
         Task<string> TriggerManualSyncAsync();
     }
 }
